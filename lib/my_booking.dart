@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class MyBookingScreen extends StatelessWidget {
-  const MyBookingScreen({Key? key}) : super(key: key);
+  const MyBookingScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -92,7 +92,7 @@ class MyBookingScreen extends StatelessWidget {
                   shape: RoundedRectangleBorder(
                     side: BorderSide(
                       width: 2,
-                      color: Colors.black.withOpacity(0.10),
+                      color: Colors.black.withValues(alpha: 0.10),
                     ),
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -164,7 +164,7 @@ class MyBookingScreen extends StatelessWidget {
                   shape: RoundedRectangleBorder(
                     side: BorderSide(
                       width: 2,
-                      color: Colors.black.withOpacity(0.10),
+                      color: Colors.black.withValues(alpha: 0.10),
                     ),
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -236,7 +236,7 @@ class MyBookingScreen extends StatelessWidget {
                   shape: RoundedRectangleBorder(
                     side: BorderSide(
                       width: 2,
-                      color: Colors.black.withOpacity(0.10),
+                      color: Colors.black.withValues(alpha: 0.10),
                     ),
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -308,7 +308,7 @@ class MyBookingScreen extends StatelessWidget {
                   shape: RoundedRectangleBorder(
                     side: BorderSide(
                       width: 2,
-                      color: Colors.black.withOpacity(0.10),
+                      color: Colors.black.withValues(alpha: 0.10),
                     ),
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -380,7 +380,7 @@ class MyBookingScreen extends StatelessWidget {
                   shape: RoundedRectangleBorder(
                     side: BorderSide(
                       width: 2,
-                      color: Colors.black.withOpacity(0.10),
+                      color: Colors.black.withValues(alpha: 0.10),
                     ),
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -577,7 +577,7 @@ class MyBookingScreen extends StatelessWidget {
                   'Category',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Colors.black.withOpacity(0.60),
+                    color: Colors.black.withValues(alpha: 0.60),
                     fontSize: 12,
                     fontFamily: 'Inter',
                     fontWeight: FontWeight.w600,
@@ -594,7 +594,7 @@ class MyBookingScreen extends StatelessWidget {
                   'Cart',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Colors.black.withOpacity(0.60),
+                    color: Colors.black.withValues(alpha: 0.60),
                     fontSize: 12,
                     fontFamily: 'Inter',
                     fontWeight: FontWeight.w600,
@@ -628,7 +628,7 @@ class MyBookingScreen extends StatelessWidget {
                   'Profile',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Colors.black.withOpacity(0.60),
+                    color: Colors.black.withValues(alpha: 0.60),
                     fontSize: 12,
                     fontFamily: 'Inter',
                     fontWeight: FontWeight.w600,

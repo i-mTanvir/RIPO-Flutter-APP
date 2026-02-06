@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class ScheduleOrderScreen extends StatelessWidget {
-  const ScheduleOrderScreen({Key? key}) : super(key: key);
+  const ScheduleOrderScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -89,7 +89,7 @@ class ScheduleOrderScreen extends StatelessWidget {
               child: Text(
                 'Please select between our available time\nslots below for delivery of your order',
                 style: TextStyle(
-                  color: Colors.black.withOpacity(0.50),
+                  color: Colors.black.withValues(alpha: 0.50),
                   fontSize: 14,
                   fontFamily: 'Inter',
                   fontWeight: FontWeight.w500,
@@ -326,7 +326,7 @@ class ScheduleOrderScreen extends StatelessWidget {
                 child: Text(
                   'Booked',
                   style: TextStyle(
-                    color: Colors.black.withOpacity(0.50),
+                    color: Colors.black.withValues(alpha: 0.50),
                     fontSize: 15,
                     fontFamily: 'Inter',
                     fontWeight: FontWeight.w500,
@@ -342,7 +342,7 @@ class ScheduleOrderScreen extends StatelessWidget {
                 child: Text(
                   'Booked',
                   style: TextStyle(
-                    color: Colors.black.withOpacity(0.50),
+                    color: Colors.black.withValues(alpha: 0.50),
                     fontSize: 15,
                     fontFamily: 'Inter',
                     fontWeight: FontWeight.w500,
@@ -358,7 +358,7 @@ class ScheduleOrderScreen extends StatelessWidget {
                 child: Text(
                   'Booked',
                   style: TextStyle(
-                    color: Colors.black.withOpacity(0.50),
+                    color: Colors.black.withValues(alpha: 0.50),
                     fontSize: 15,
                     fontFamily: 'Inter',
                     fontWeight: FontWeight.w500,
@@ -374,7 +374,7 @@ class ScheduleOrderScreen extends StatelessWidget {
                 child: Text(
                   'Booked',
                   style: TextStyle(
-                    color: Colors.black.withOpacity(0.50),
+                    color: Colors.black.withValues(alpha: 0.50),
                     fontSize: 15,
                     fontFamily: 'Inter',
                     fontWeight: FontWeight.w500,
