@@ -134,7 +134,7 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    // TODO: handle send reset code logic
+                    
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF6950F4),

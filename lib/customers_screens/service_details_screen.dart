@@ -3,8 +3,13 @@ import 'package:ripo/customers_screens/booking_schedule.dart';
 
 class ServiceDetailsScreen extends StatefulWidget {
   final Map<String, dynamic>? serviceData;
+  final bool isProviderPreview;
 
-  const ServiceDetailsScreen({super.key, this.serviceData});
+  const ServiceDetailsScreen({
+    super.key, 
+    this.serviceData, 
+    this.isProviderPreview = false,
+  });
 
   @override
   State<ServiceDetailsScreen> createState() => _ServiceDetailsScreenState();
@@ -55,9 +60,9 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
         icon: const Icon(Icons.arrow_back_rounded, color: Colors.black87),
         onPressed: () => Navigator.pop(context),
       ),
-      title: const Text(
-        'Service Details',
-        style: TextStyle(
+      title: Text(
+        widget.isProviderPreview ? 'Service Preview' : 'Service Details',
+        style: const TextStyle(
           fontFamily: 'Inter',
           fontSize: 18,
           fontWeight: FontWeight.w600,
@@ -66,32 +71,40 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
       ),
       centerTitle: true,
       actions: [
-        Container(
-          margin: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
-          width: 40,
-          decoration: const BoxDecoration(
-            color: Color(0xFFF5F5FF),
-            shape: BoxShape.circle,
+        if (!widget.isProviderPreview) ...[
+          Container(
+            margin: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
+            width: 40,
+            decoration: const BoxDecoration(
+              color: Color(0xFFF5F5FF),
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.favorite_border_rounded,
+                  color: Color(0xFF6950F4), size: 20),
+              onPressed: () {},
+            ),
           ),
-          child: IconButton(
-            icon: const Icon(Icons.favorite_border_rounded,
-                color: Color(0xFF6950F4), size: 20),
-            onPressed: () {},
+          Container(
+            margin: const EdgeInsets.only(right: 16, top: 8, bottom: 8),
+            width: 40,
+            decoration: const BoxDecoration(
+              color: Color(0xFFFFF5E5),
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.reply_rounded,
+                  color: Color(0xFFFF9800), size: 20),
+              onPressed: () {},
+            ),
           ),
-        ),
-        Container(
-          margin: const EdgeInsets.only(right: 16, top: 8, bottom: 8),
-          width: 40,
-          decoration: const BoxDecoration(
-            color: Color(0xFFFFF5E5),
-            shape: BoxShape.circle,
-          ),
-          child: IconButton(
-            icon: const Icon(Icons.reply_rounded,
-                color: Color(0xFFFF9800), size: 20),
-            onPressed: () {},
-          ),
-        ),
+        ] else ...[
+          Container(
+             alignment: Alignment.center,
+             padding: const EdgeInsets.only(right: 16),
+             child: const Text('PREVIEW', style: TextStyle(fontFamily: 'Inter', color: Color(0xFF6950F4), fontWeight: FontWeight.bold, fontSize: 12)),
+          )
+        ]
       ],
     );
   }
@@ -591,29 +604,32 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
       ),
       child: SafeArea(
         child: ElevatedButton(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => BookingScheduleScreen(serviceData: widget.serviceData),
-              ),
-            );
-          },
+          onPressed: widget.isProviderPreview 
+            ? () { Navigator.pop(context); } 
+            : () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => BookingScheduleScreen(serviceData: widget.serviceData),
+                  ),
+                );
+              },
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF6950F4),
+            backgroundColor: widget.isProviderPreview ? Colors.white : const Color(0xFF6950F4),
             minimumSize: const Size(double.infinity, 54),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(28),
+              side: widget.isProviderPreview ? const BorderSide(color: Color(0xFF6950F4), width: 2) : BorderSide.none,
             ),
             elevation: 0,
           ),
-          child: const Text(
-            'Book / Schedule Service',
+          child: Text(
+            widget.isProviderPreview ? 'Close Preview' : 'Book / Schedule Service',
             style: TextStyle(
               fontFamily: 'Inter',
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: Colors.white,
+              color: widget.isProviderPreview ? const Color(0xFF6950F4) : Colors.white,
             ),
           ),
         ),

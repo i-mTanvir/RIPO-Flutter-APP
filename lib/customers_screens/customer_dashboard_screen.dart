@@ -4,6 +4,7 @@ import 'package:ripo/customers_screens/search_screen.dart';
 import 'package:ripo/customers_screens/my_booking_screen.dart';
 import 'package:ripo/customers_screens/customer_profile_screen.dart';
 import 'package:ripo/customers_screens/category_screen.dart';
+import 'package:ripo/customers_screens/notification_screen.dart';
 
 class CustomerDashboardScreen extends StatefulWidget {
   const CustomerDashboardScreen({super.key});
@@ -227,35 +228,45 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
                       ),
                     ],
                   ),
-                  Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Container(
-                        width: 42,
-                        height: 42,
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const NotificationScreen(),
                         ),
-                        child: const Icon(
-                          Icons.notifications_outlined,
-                          color: Colors.black87,
-                          size: 22,
-                        ),
-                      ),
-                      Positioned(
-                        top: 2,
-                        right: 2,
-                        child: Container(
-                          width: 10,
-                          height: 10,
+                      );
+                    },
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          width: 42,
+                          height: 42,
                           decoration: const BoxDecoration(
-                            color: Colors.red,
+                            color: Colors.white,
                             shape: BoxShape.circle,
                           ),
+                          child: const Icon(
+                            Icons.notifications_outlined,
+                            color: Colors.black87,
+                            size: 22,
+                          ),
                         ),
-                      ),
-                    ],
+                        Positioned(
+                          top: 2,
+                          right: 2,
+                          child: Container(
+                            width: 10,
+                            height: 10,
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),

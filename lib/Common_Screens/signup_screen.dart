@@ -204,7 +204,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    // TODO: handle signup logic
+                    
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF6950F4),

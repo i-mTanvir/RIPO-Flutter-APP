@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:ripo/customers_screens/edit_profile_screen.dart';
 import 'package:ripo/customers_screens/chat_list_screen.dart';
 import 'package:ripo/customers_screens/favorite_screen.dart';
+import 'package:ripo/providers_screens/provider_wallet_screen.dart';
 
 class CustomerProfileScreen extends StatelessWidget {
   CustomerProfileScreen({super.key});
@@ -39,6 +40,8 @@ class CustomerProfileScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
               child: Column(
                 children: [
+                  _buildStatsBanner(),
+                  const SizedBox(height: 20),
                   _buildMenuCard('General', _generalItems),
                   const SizedBox(height: 20),
                   _buildMenuCard('About Our App', _aboutItems),
@@ -105,7 +108,7 @@ class CustomerProfileScreen extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: const [
           BoxShadow(
             color: Color(0x0A000000),
@@ -121,8 +124,8 @@ class CustomerProfileScreen extends StatelessWidget {
             title,
             style: const TextStyle(
               fontFamily: 'Inter',
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
               color: Colors.black87,
             ),
           ),
@@ -140,7 +143,8 @@ class CustomerProfileScreen extends StatelessWidget {
             itemCount: items.length,
             itemBuilder: (context, index) {
               final item = items[index];
-              return InkWell(
+              return GestureDetector(
+                behavior: HitTestBehavior.opaque,
                 onTap: () {
                   if (item['label'] == 'My Profile') {
                     Navigator.push(
@@ -154,6 +158,13 @@ class CustomerProfileScreen extends StatelessWidget {
                       context,
                       MaterialPageRoute(
                         builder: (_) => ChatListScreen(),
+                      ),
+                    );
+                  } else if (item['label'] == 'My Wallet') {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ProviderWalletScreen(),
                       ),
                     );
                   } else if (item['label'] == 'Favourite') {
@@ -188,8 +199,8 @@ class CustomerProfileScreen extends StatelessWidget {
                     style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 10,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.black54,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
                     ),
                   ),
                 ],
@@ -209,28 +220,70 @@ class CustomerProfileScreen extends StatelessWidget {
       child: OutlinedButton(
         onPressed: () {},
         style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: Color(0xFFFF9800), width: 1.2), // Orange border
+          side: const BorderSide(color: Color(0xFFD32F2F), width: 1.5),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(12),
           ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: const [
+            Icon(Icons.logout_rounded, color: Color(0xFFD32F2F), size: 20),
+            SizedBox(width: 8),
             Text(
               'Log Out',
               style: TextStyle(
                 fontFamily: 'Inter',
                 fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFFFF9800),
+                fontWeight: FontWeight.w700,
+                color: Color(0xFFD32F2F),
               ),
             ),
-            SizedBox(width: 8),
-            Icon(Icons.arrow_forward_rounded, color: Color(0xFFFF9800), size: 18),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildStatsBanner() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF6950F4), Color(0xFF8C7AF8)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [BoxShadow(color: Color(0x336950F4), blurRadius: 10, offset: Offset(0, 4))],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _buildStatItem('Bookings', '12', Icons.task_alt_rounded, Colors.white),
+          Container(width: 1, height: 40, color: Colors.white24),
+          _buildStatItem('Points', '250', Icons.stars_rounded, Colors.amber),
+          Container(width: 1, height: 40, color: Colors.white24),
+          _buildStatItem('Tier', 'Gold', Icons.shield_rounded, const Color(0xFFFFD700)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatItem(String label, String value, IconData icon, Color iconColor) {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: iconColor, size: 16),
+            const SizedBox(width: 4),
+            Text(value, style: const TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(label, style: const TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w500, color: Colors.white70)),
+      ],
     );
   }
 }

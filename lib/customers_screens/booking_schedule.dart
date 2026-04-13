@@ -409,6 +409,7 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
     
     // Navigate back to Dashboard resetting the stack
     Future.delayed(const Duration(milliseconds: 600), () {
+      if (!mounted) return;
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (_) => const CustomerDashboardScreen()),
