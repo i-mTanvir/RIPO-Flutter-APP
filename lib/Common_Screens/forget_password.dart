@@ -32,7 +32,6 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-
               // ── Top bar: back arrow + title ──
               SizedBox(height: size.height * 0.02),
               Row(
@@ -157,7 +156,6 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
                   ),
                 ),
               ),
-
             ],
           ),
         ),

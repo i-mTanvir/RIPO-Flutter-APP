@@ -24,7 +24,6 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-
               // ── Top bar: logo + language ──
               SizedBox(height: size.height * 0.02),
               Row(
@@ -41,7 +40,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   ),
                   OutlinedButton.icon(
                     onPressed: () {},
-                    icon: const Icon(Icons.language, size: 16, color: Colors.black54),
+                    icon: const Icon(Icons.language,
+                        size: 16, color: Colors.black54),
                     label: const Text(
                       'English',
                       style: TextStyle(
@@ -55,7 +55,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
                     ),
                   ),
                 ],
@@ -106,7 +107,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const LoginScreen()),
+                          MaterialPageRoute(
+                              builder: (_) => const LoginScreen()),
                         );
                       },
                       style: ElevatedButton.styleFrom(
@@ -133,7 +135,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const SignupScreen()),
+                          MaterialPageRoute(
+                              builder: (_) => const SignupScreen()),
                         );
                       },
                       style: OutlinedButton.styleFrom(
@@ -181,7 +184,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                           color: Colors.black54,
                         ),
                         children: [
-                          TextSpan(text: 'By logging in or registering, you agree to our '),
+                          TextSpan(
+                              text:
+                                  'By logging in or registering, you agree to our '),
                           TextSpan(
                             text: 'Terms of Service',
                             style: TextStyle(color: Color(0xFF3B5BDB)),
@@ -199,7 +204,6 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               ),
 
               SizedBox(height: size.height * 0.02),
-
             ],
           ),
         ),

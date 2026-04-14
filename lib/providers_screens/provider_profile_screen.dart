@@ -75,7 +75,8 @@ class ProviderProfileScreen extends StatelessWidget {
 
     return Container(
       color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(16, 60, 16, 24), // Accounts for status bar
+      padding:
+          const EdgeInsets.fromLTRB(16, 60, 16, 24), // Accounts for status bar
       child: Row(
         children: [
           Stack(
@@ -98,7 +99,8 @@ class ProviderProfileScreen extends StatelessWidget {
                 right: 0,
                 child: Container(
                   padding: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(color: Color(0xFF388E3C), shape: BoxShape.circle),
+                  decoration: const BoxDecoration(
+                      color: Color(0xFF388E3C), shape: BoxShape.circle),
                   child: const Icon(Icons.check, size: 12, color: Colors.white),
                 ),
               )
@@ -121,7 +123,8 @@ class ProviderProfileScreen extends StatelessWidget {
                       ),
                     ),
                     SizedBox(width: 6),
-                    const Icon(Icons.verified, color: Color(0xFF2196F3), size: 16),
+                    const Icon(Icons.verified,
+                        color: Color(0xFF2196F3), size: 16),
                   ],
                 ),
                 const SizedBox(height: 4),
@@ -152,7 +155,10 @@ class ProviderProfileScreen extends StatelessWidget {
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [BoxShadow(color: Color(0x336950F4), blurRadius: 10, offset: Offset(0, 4))],
+        boxShadow: const [
+          BoxShadow(
+              color: Color(0x336950F4), blurRadius: 10, offset: Offset(0, 4))
+        ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -161,13 +167,15 @@ class ProviderProfileScreen extends StatelessWidget {
           Container(width: 1, height: 40, color: Colors.white24),
           _buildStatItem('Jobs', '124+', Icons.task_alt_rounded, Colors.white),
           Container(width: 1, height: 40, color: Colors.white24),
-          _buildStatItem('Level', 'Pro', Icons.military_tech_rounded, const Color(0xFFFFD700)),
+          _buildStatItem('Level', 'Pro', Icons.military_tech_rounded,
+              const Color(0xFFFFD700)),
         ],
       ),
     );
   }
 
-  Widget _buildStatItem(String label, String value, IconData icon, Color iconColor) {
+  Widget _buildStatItem(
+      String label, String value, IconData icon, Color iconColor) {
     return Column(
       children: [
         Row(
@@ -175,11 +183,21 @@ class ProviderProfileScreen extends StatelessWidget {
           children: [
             Icon(icon, color: iconColor, size: 16),
             const SizedBox(width: 4),
-            Text(value, style: const TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
+            Text(value,
+                style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white)),
           ],
         ),
         const SizedBox(height: 4),
-        Text(label, style: const TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w500, color: Colors.white70)),
+        Text(label,
+            style: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: Colors.white70)),
       ],
     );
   }
@@ -298,7 +316,8 @@ class ProviderProfileScreen extends StatelessWidget {
           );
         },
         style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: Color(0xFFD32F2F), width: 1.5), // Red border
+          side: const BorderSide(
+              color: Color(0xFFD32F2F), width: 1.5), // Red border
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -323,4 +342,3 @@ class ProviderProfileScreen extends StatelessWidget {
     );
   }
 }
-

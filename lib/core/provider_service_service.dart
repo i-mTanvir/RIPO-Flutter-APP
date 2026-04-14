@@ -173,10 +173,9 @@ class ProviderServiceService {
         id: row['id'] as String,
         name: row['name'] as String,
         categoryId: row['category_id'] as String,
-        categoryName:
-            (row['service_categories'] as Map<String, dynamic>?)?['name']
-                    as String? ??
-                'Unknown',
+        categoryName: (row['service_categories']
+                as Map<String, dynamic>?)?['name'] as String? ??
+            'Unknown',
         description: row['description'] as String?,
         variations: row['variations'] as String?,
         faqs: row['faqs'] as String?,

@@ -60,16 +60,19 @@ class ChatListScreen extends StatelessWidget {
       body: ListView.separated(
         padding: const EdgeInsets.symmetric(vertical: 10),
         itemCount: _chats.length,
-        separatorBuilder: (context, index) => const Divider(height: 1, color: Colors.black12),
+        separatorBuilder: (context, index) =>
+            const Divider(height: 1, color: Colors.black12),
         itemBuilder: (context, index) {
           final chat = _chats[index];
           return ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             onTap: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => ChatDetailScreen(providerName: chat['name']),
+                  builder: (context) =>
+                      ChatDetailScreen(providerName: chat['name']),
                 ),
               );
             },
@@ -82,7 +85,8 @@ class ChatListScreen extends StatelessWidget {
                     color: Colors.grey.shade200,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.person, size: 30, color: Colors.black45),
+                  child:
+                      const Icon(Icons.person, size: 30, color: Colors.black45),
                 ),
                 if (chat['isOnline'] == true)
                   Positioned(
@@ -118,7 +122,8 @@ class ChatListScreen extends StatelessWidget {
                 style: TextStyle(
                   fontFamily: 'Inter',
                   fontSize: 13,
-                  fontWeight: chat['isRead'] ? FontWeight.w500 : FontWeight.w700,
+                  fontWeight:
+                      chat['isRead'] ? FontWeight.w500 : FontWeight.w700,
                   color: chat['isRead'] ? Colors.black54 : Colors.black87,
                 ),
               ),

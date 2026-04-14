@@ -26,7 +26,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
   void _sendMessage() {
     if (_messageController.text.trim().isEmpty) return;
-    
+
     setState(() {
       _messages.add({
         'text': _messageController.text.trim(),
@@ -61,7 +61,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                     color: Colors.grey.shade200,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.person, size: 20, color: Colors.black45),
+                  child:
+                      const Icon(Icons.person, size: 20, color: Colors.black45),
                 ),
                 Positioned(
                   bottom: 0,
@@ -110,7 +111,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             onPressed: () {},
           ),
           IconButton(
-            icon: const Icon(Icons.info_outline_rounded, color: Colors.black54, size: 24),
+            icon: const Icon(Icons.info_outline_rounded,
+                color: Colors.black54, size: 24),
             onPressed: () {},
           ),
           const SizedBox(width: 8),
@@ -129,7 +131,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: Row(
-                    mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+                    mainAxisAlignment:
+                        isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       if (!isMe) ...[
@@ -141,14 +144,18 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                             color: Colors.grey.shade200,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.person, size: 16, color: Colors.black45),
+                          child: const Icon(Icons.person,
+                              size: 16, color: Colors.black45),
                         ),
                       ],
                       Flexible(
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
                           decoration: BoxDecoration(
-                            color: isMe ? const Color(0xFF6950F4) : const Color(0xFFF2F2F2),
+                            color: isMe
+                                ? const Color(0xFF6950F4)
+                                : const Color(0xFFF2F2F2),
                             borderRadius: BorderRadius.only(
                               topLeft: const Radius.circular(16),
                               topRight: const Radius.circular(16),
@@ -173,22 +180,26 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               },
             ),
           ),
-          
+
           // Bottom Input Bar
           Container(
-            padding: const EdgeInsets.fromLTRB(10, 10, 10, 24), // Accounts for safer bottom area
+            padding: const EdgeInsets.fromLTRB(
+                10, 10, 10, 24), // Accounts for safer bottom area
             decoration: const BoxDecoration(
               color: Colors.white,
-              border: Border(top: BorderSide(color: Colors.black12, width: 0.5)),
+              border:
+                  Border(top: BorderSide(color: Colors.black12, width: 0.5)),
             ),
             child: Row(
               children: [
                 IconButton(
-                  icon: const Icon(Icons.add_circle, color: Color(0xFF6950F4), size: 28),
+                  icon: const Icon(Icons.add_circle,
+                      color: Color(0xFF6950F4), size: 28),
                   onPressed: () {},
                 ),
                 IconButton(
-                  icon: const Icon(Icons.camera_alt, color: Colors.black45, size: 24),
+                  icon: const Icon(Icons.camera_alt,
+                      color: Colors.black45, size: 24),
                   onPressed: () {},
                 ),
                 const SizedBox(width: 4),
@@ -205,9 +216,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                         hintText: 'Message...',
                         hintStyle: const TextStyle(color: Colors.black38),
                         border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
                         suffixIcon: IconButton(
-                          icon: const Icon(Icons.sentiment_satisfied_rounded, color: Colors.black45),
+                          icon: const Icon(Icons.sentiment_satisfied_rounded,
+                              color: Colors.black45),
                           onPressed: () {},
                         ),
                       ),
@@ -224,7 +237,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                       color: Color(0xFF6950F4),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.send_rounded, color: Colors.white, size: 18),
+                    child: const Icon(Icons.send_rounded,
+                        color: Colors.white, size: 18),
                   ),
                 ),
               ],

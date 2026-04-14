@@ -9,10 +9,12 @@ class ProviderBusinessProfileScreen extends StatefulWidget {
   const ProviderBusinessProfileScreen({super.key, required this.onBack});
 
   @override
-  State<ProviderBusinessProfileScreen> createState() => _ProviderBusinessProfileScreenState();
+  State<ProviderBusinessProfileScreen> createState() =>
+      _ProviderBusinessProfileScreenState();
 }
 
-class _ProviderBusinessProfileScreenState extends State<ProviderBusinessProfileScreen> {
+class _ProviderBusinessProfileScreenState
+    extends State<ProviderBusinessProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   final _businessNameController = TextEditingController();
   final _ownerNameController = TextEditingController();
@@ -79,16 +81,22 @@ class _ProviderBusinessProfileScreenState extends State<ProviderBusinessProfileS
       final provider = results[0];
       final profile = results[1];
 
-      _businessNameController.text = (provider?['business_name'] as String?)?.trim() ?? '';
-      _ownerNameController.text = (provider?['owner_name'] as String?)?.trim() ?? '';
-      _phoneController.text = (provider?['business_phone'] as String?)?.trim() ??
-          (profile?['phone'] as String?)?.trim() ??
-          '';
-      _experienceController.text = (provider?['experience_years'] as int?)?.toString() ?? '';
-      _emailController.text = (provider?['business_email'] as String?)?.trim() ??
-          (profile?['email'] as String?)?.trim() ??
-          '';
-      _addressController.text = (provider?['business_address'] as String?)?.trim() ?? '';
+      _businessNameController.text =
+          (provider?['business_name'] as String?)?.trim() ?? '';
+      _ownerNameController.text =
+          (provider?['owner_name'] as String?)?.trim() ?? '';
+      _phoneController.text =
+          (provider?['business_phone'] as String?)?.trim() ??
+              (profile?['phone'] as String?)?.trim() ??
+              '';
+      _experienceController.text =
+          (provider?['experience_years'] as int?)?.toString() ?? '';
+      _emailController.text =
+          (provider?['business_email'] as String?)?.trim() ??
+              (profile?['email'] as String?)?.trim() ??
+              '';
+      _addressController.text =
+          (provider?['business_address'] as String?)?.trim() ?? '';
       _bioController.text = (provider?['bio'] as String?)?.trim() ?? '';
       _tradeLicenseController.text =
           (provider?['trade_license_number'] as String?)?.trim() ?? '';
@@ -97,7 +105,8 @@ class _ProviderBusinessProfileScreenState extends State<ProviderBusinessProfileS
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not load business profile data.')),
+          const SnackBar(
+              content: Text('Could not load business profile data.')),
         );
       }
     } finally {
@@ -138,7 +147,9 @@ class _ProviderBusinessProfileScreenState extends State<ProviderBusinessProfileS
         'business_address': _addressController.text.trim().isEmpty
             ? null
             : _addressController.text.trim(),
-        'bio': _bioController.text.trim().isEmpty ? null : _bioController.text.trim(),
+        'bio': _bioController.text.trim().isEmpty
+            ? null
+            : _bioController.text.trim(),
         'trade_license_number': _tradeLicenseController.text.trim().isEmpty
             ? null
             : _tradeLicenseController.text.trim(),
@@ -152,8 +163,12 @@ class _ProviderBusinessProfileScreenState extends State<ProviderBusinessProfileS
         'full_name': _ownerNameController.text.trim().isEmpty
             ? null
             : _ownerNameController.text.trim(),
-        'phone': _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim(),
-        'email': _emailController.text.trim().isEmpty ? null : _emailController.text.trim(),
+        'phone': _phoneController.text.trim().isEmpty
+            ? null
+            : _phoneController.text.trim(),
+        'email': _emailController.text.trim().isEmpty
+            ? null
+            : _emailController.text.trim(),
         'avatar_url': _avatarUrl.isEmpty ? null : _avatarUrl,
         'updated_at': DateTime.now().toIso8601String(),
       }).eq('id', userId);
@@ -198,7 +213,8 @@ class _ProviderBusinessProfileScreenState extends State<ProviderBusinessProfileS
       });
 
       final ext = _fileExtension(picked.name);
-      final path = '$userId/profile-${DateTime.now().millisecondsSinceEpoch}.$ext';
+      final path =
+          '$userId/profile-${DateTime.now().millisecondsSinceEpoch}.$ext';
       final contentType = _contentTypeForExtension(ext);
 
       await client.storage.from('provider-profile-images').uploadBinary(
@@ -287,11 +303,19 @@ class _ProviderBusinessProfileScreenState extends State<ProviderBusinessProfileS
                   children: [
                     _buildImageUploader(),
                     const SizedBox(height: 24),
-                    const Text('Basic Information', style: TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w700, color: Colors.black87)),
+                    const Text('Basic Information',
+                        style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black87)),
                     const SizedBox(height: 16),
-                    _buildInputField(label: 'Business Name', controller: _businessNameController),
+                    _buildInputField(
+                        label: 'Business Name',
+                        controller: _businessNameController),
                     const SizedBox(height: 16),
-                    _buildInputField(label: 'Owner Name', controller: _ownerNameController),
+                    _buildInputField(
+                        label: 'Owner Name', controller: _ownerNameController),
                     const SizedBox(height: 16),
                     Row(
                       children: [
@@ -319,8 +343,12 @@ class _ProviderBusinessProfileScreenState extends State<ProviderBusinessProfileS
                       keyboardType: TextInputType.emailAddress,
                     ),
                     const SizedBox(height: 24),
-
-                    const Text('Business Details', style: TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w700, color: Colors.black87)),
+                    const Text('Business Details',
+                        style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black87)),
                     const SizedBox(height: 16),
                     _buildInputField(
                       label: 'Business Address',
@@ -334,15 +362,20 @@ class _ProviderBusinessProfileScreenState extends State<ProviderBusinessProfileS
                       maxLines: 4,
                     ),
                     const SizedBox(height: 24),
-                    const Text('Verification & Legal', style: TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w700, color: Colors.black87)),
+                    const Text('Verification & Legal',
+                        style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black87)),
                     const SizedBox(height: 16),
                     _buildInputField(
                       label: 'Trade License Number (Optional)',
                       controller: _tradeLicenseController,
                     ),
                     const SizedBox(height: 16),
-                    _buildInputField(label: 'NID Number', controller: _nidController),
-
+                    _buildInputField(
+                        label: 'NID Number', controller: _nidController),
                     const SizedBox(height: 40),
                   ],
                 ),
@@ -352,7 +385,10 @@ class _ProviderBusinessProfileScreenState extends State<ProviderBusinessProfileS
         padding: const EdgeInsets.all(16),
         decoration: const BoxDecoration(
           color: Colors.white,
-          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, -2))],
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black12, blurRadius: 10, offset: Offset(0, -2))
+          ],
         ),
         child: SafeArea(
           child: GestureDetector(
@@ -375,7 +411,11 @@ class _ProviderBusinessProfileScreenState extends State<ProviderBusinessProfileS
               alignment: Alignment.center,
               child: Text(
                 _isSaving ? 'Saving...' : 'Save Profile Updates',
-                style: const TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),
+                style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white),
               ),
             ),
           ),
@@ -423,7 +463,8 @@ class _ProviderBusinessProfileScreenState extends State<ProviderBusinessProfileS
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.white, width: 2),
                 ),
-                child: const Icon(Icons.camera_alt_rounded, size: 16, color: Colors.white),
+                child: const Icon(Icons.camera_alt_rounded,
+                    size: 16, color: Colors.white),
               ),
             ),
           ),
@@ -441,17 +482,24 @@ class _ProviderBusinessProfileScreenState extends State<ProviderBusinessProfileS
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black54)),
+        Text(label,
+            style: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Colors.black54)),
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,
           keyboardType: keyboardType,
           maxLines: maxLines,
-          style: const TextStyle(fontFamily: 'Inter', fontSize: 14, color: Colors.black87),
+          style: const TextStyle(
+              fontFamily: 'Inter', fontSize: 14, color: Colors.black87),
           decoration: InputDecoration(
             filled: true,
             fillColor: Colors.white,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Colors.black12),
@@ -462,7 +510,8 @@ class _ProviderBusinessProfileScreenState extends State<ProviderBusinessProfileS
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF6950F4), width: 1.5),
+              borderSide:
+                  const BorderSide(color: Color(0xFF6950F4), width: 1.5),
             ),
           ),
         ),

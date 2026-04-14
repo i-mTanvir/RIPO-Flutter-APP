@@ -5,26 +5,96 @@ class CategoryScreen extends StatelessWidget {
   CategoryScreen({super.key});
 
   final List<Map<String, dynamic>> _appliances = [
-    {'icon': Icons.ac_unit_rounded, 'name': 'AC Repair', 'bg': const Color(0xFFE8F4FD), 'color': const Color(0xFF4285F4)},
-    {'icon': Icons.kitchen_rounded, 'name': 'Refrigerator', 'bg': const Color(0xFFFDE8F3), 'color': const Color(0xFFE91E63)},
-    {'icon': Icons.tv_rounded, 'name': 'TV Repair', 'bg': const Color(0xFFE8FDF0), 'color': const Color(0xFF34A853)},
-    {'icon': Icons.microwave_rounded, 'name': 'Microwave', 'bg': const Color(0xFFFEF3E8), 'color': const Color(0xFFF39C12)},
-    {'icon': Icons.local_laundry_service_rounded, 'name': 'Washing\nMachine', 'bg': const Color(0xFFF2EFFF), 'color': const Color(0xFF6950F4)},
-    {'icon': Icons.water_drop_rounded, 'name': 'Water\nPurifier', 'bg': const Color(0xFFE0FAFA), 'color': const Color(0xFF00BFA5)},
+    {
+      'icon': Icons.ac_unit_rounded,
+      'name': 'AC Repair',
+      'bg': const Color(0xFFE8F4FD),
+      'color': const Color(0xFF4285F4)
+    },
+    {
+      'icon': Icons.kitchen_rounded,
+      'name': 'Refrigerator',
+      'bg': const Color(0xFFFDE8F3),
+      'color': const Color(0xFFE91E63)
+    },
+    {
+      'icon': Icons.tv_rounded,
+      'name': 'TV Repair',
+      'bg': const Color(0xFFE8FDF0),
+      'color': const Color(0xFF34A853)
+    },
+    {
+      'icon': Icons.microwave_rounded,
+      'name': 'Microwave',
+      'bg': const Color(0xFFFEF3E8),
+      'color': const Color(0xFFF39C12)
+    },
+    {
+      'icon': Icons.local_laundry_service_rounded,
+      'name': 'Washing\nMachine',
+      'bg': const Color(0xFFF2EFFF),
+      'color': const Color(0xFF6950F4)
+    },
+    {
+      'icon': Icons.water_drop_rounded,
+      'name': 'Water\nPurifier',
+      'bg': const Color(0xFFE0FAFA),
+      'color': const Color(0xFF00BFA5)
+    },
   ];
 
   final List<Map<String, dynamic>> _maintenance = [
-    {'icon': Icons.plumbing_rounded, 'name': 'Plumber', 'bg': const Color(0xFFE8F4FD), 'color': const Color(0xFF4285F4)},
-    {'icon': Icons.electrical_services_rounded, 'name': 'Electrician', 'bg': const Color(0xFFFEF3E8), 'color': const Color(0xFFF39C12)},
-    {'icon': Icons.handyman_rounded, 'name': 'Carpenter', 'bg': const Color(0xFFE8F4FD), 'color': const Color(0xFF4285F4)},
-    {'icon': Icons.format_paint_rounded, 'name': 'Painter', 'bg': const Color(0xFFFDE8F3), 'color': const Color(0xFFE91E63)},
+    {
+      'icon': Icons.plumbing_rounded,
+      'name': 'Plumber',
+      'bg': const Color(0xFFE8F4FD),
+      'color': const Color(0xFF4285F4)
+    },
+    {
+      'icon': Icons.electrical_services_rounded,
+      'name': 'Electrician',
+      'bg': const Color(0xFFFEF3E8),
+      'color': const Color(0xFFF39C12)
+    },
+    {
+      'icon': Icons.handyman_rounded,
+      'name': 'Carpenter',
+      'bg': const Color(0xFFE8F4FD),
+      'color': const Color(0xFF4285F4)
+    },
+    {
+      'icon': Icons.format_paint_rounded,
+      'name': 'Painter',
+      'bg': const Color(0xFFFDE8F3),
+      'color': const Color(0xFFE91E63)
+    },
   ];
 
   final List<Map<String, dynamic>> _cleaning = [
-    {'icon': Icons.cleaning_services_rounded, 'name': 'Full Home', 'bg': const Color(0xFFF2EFFF), 'color': const Color(0xFF6950F4)},
-    {'icon': Icons.chair_rounded, 'name': 'Sofa Clean', 'bg': const Color(0xFFE8FDF0), 'color': const Color(0xFF34A853)},
-    {'icon': Icons.bathtub_rounded, 'name': 'Bathroom', 'bg': const Color(0xFFE0FAFA), 'color': const Color(0xFF00BFA5)},
-    {'icon': Icons.pest_control_rounded, 'name': 'Pest\nControl', 'bg': const Color(0xFFFEF3E8), 'color': const Color(0xFFF39C12)},
+    {
+      'icon': Icons.cleaning_services_rounded,
+      'name': 'Full Home',
+      'bg': const Color(0xFFF2EFFF),
+      'color': const Color(0xFF6950F4)
+    },
+    {
+      'icon': Icons.chair_rounded,
+      'name': 'Sofa Clean',
+      'bg': const Color(0xFFE8FDF0),
+      'color': const Color(0xFF34A853)
+    },
+    {
+      'icon': Icons.bathtub_rounded,
+      'name': 'Bathroom',
+      'bg': const Color(0xFFE0FAFA),
+      'color': const Color(0xFF00BFA5)
+    },
+    {
+      'icon': Icons.pest_control_rounded,
+      'name': 'Pest\nControl',
+      'bg': const Color(0xFFFEF3E8),
+      'color': const Color(0xFFF39C12)
+    },
   ];
 
   void _routeToSearch(BuildContext context) {
@@ -55,26 +125,24 @@ class CategoryScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                    _buildSectionTitle('Appliance Repair'),
-                    const SizedBox(height: 16),
-                    _buildCategoryGrid(context, _appliances),
-                    const SizedBox(height: 32),
-                    
-                    _buildSectionTitle('Home Maintenance'),
-                    const SizedBox(height: 16),
-                    _buildCategoryGrid(context, _maintenance),
-                    const SizedBox(height: 32),
-                    
-                    _buildSectionTitle('Cleaning & Pest Control'),
-                    const SizedBox(height: 16),
-                    _buildCategoryGrid(context, _cleaning),
-                    const SizedBox(height: 30),
-                  ],
-                ),
+                  _buildSectionTitle('Appliance Repair'),
+                  const SizedBox(height: 16),
+                  _buildCategoryGrid(context, _appliances),
+                  const SizedBox(height: 32),
+                  _buildSectionTitle('Home Maintenance'),
+                  const SizedBox(height: 16),
+                  _buildCategoryGrid(context, _maintenance),
+                  const SizedBox(height: 32),
+                  _buildSectionTitle('Cleaning & Pest Control'),
+                  const SizedBox(height: 16),
+                  _buildCategoryGrid(context, _cleaning),
+                  const SizedBox(height: 30),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -150,7 +218,8 @@ class CategoryScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildCategoryGrid(BuildContext context, List<Map<String, dynamic>> items) {
+  Widget _buildCategoryGrid(
+      BuildContext context, List<Map<String, dynamic>> items) {
     return GridView.builder(
       padding: EdgeInsets.zero,
       shrinkWrap: true,

@@ -61,10 +61,10 @@ class AuthService {
           'gender': gender?.isEmpty ?? true ? null : gender,
           'age': age,
           'nid_number': nidNumber?.isEmpty ?? true ? null : nidNumber,
-          'trade_license_number': tradeLicenseNumber?.isEmpty ?? true
-              ? null
-              : tradeLicenseNumber,
-          if (role == AppUserRole.provider) 'business_name': '$fullName Services',
+          'trade_license_number':
+              tradeLicenseNumber?.isEmpty ?? true ? null : tradeLicenseNumber,
+          if (role == AppUserRole.provider)
+            'business_name': '$fullName Services',
         },
       );
 
@@ -84,7 +84,9 @@ class AuthService {
           'Too many signup attempts right now. Wait a few minutes and try again, or configure SMTP/email settings in Supabase.',
         );
       }
-      if (error.message.toLowerCase().contains('database error saving new user')) {
+      if (error.message
+          .toLowerCase()
+          .contains('database error saving new user')) {
         throw const AuthException(
           'Could not create this account because one of the profile values already exists. Try a different phone number.',
         );
@@ -116,11 +118,8 @@ class AuthService {
       );
     }
 
-    final profile = await client
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single();
+    final profile =
+        await client.from('profiles').select('role').eq('id', user.id).single();
 
     final dbRole = profile['role'] as String? ?? AppUserRole.customer.name;
     return AppUserRole.values.firstWhere(

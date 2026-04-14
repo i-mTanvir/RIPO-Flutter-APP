@@ -41,7 +41,8 @@ class ProviderWalletScreen extends StatelessWidget {
             child: Container(
               color: const Color(0xFFF4F4F8),
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -120,7 +121,8 @@ class ProviderWalletScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMetric({required String label, required String value, required IconData icon}) {
+  Widget _buildMetric(
+      {required String label, required String value, required IconData icon}) {
     return Column(
       children: [
         Row(
@@ -189,7 +191,12 @@ class ProviderWalletScreen extends StatelessWidget {
                   padding: EdgeInsets.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                child: const Text('Change', style: TextStyle(fontFamily: 'Inter', fontSize: 13, color: Color(0xFF6950F4), fontWeight: FontWeight.w600)),
+                child: const Text('Change',
+                    style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 13,
+                        color: Color(0xFF6950F4),
+                        fontWeight: FontWeight.w600)),
               ),
             ],
           ),
@@ -203,7 +210,8 @@ class ProviderWalletScreen extends StatelessWidget {
                   color: const Color(0xFFF5F5FF),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.account_balance_rounded, color: Color(0xFF6950F4)),
+                child: const Icon(Icons.account_balance_rounded,
+                    color: Color(0xFF6950F4)),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -212,12 +220,20 @@ class ProviderWalletScreen extends StatelessWidget {
                   children: const [
                     Text(
                       'Dutch-Bangla Bank',
-                      style: TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w700, color: Colors.black87),
+                      style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black87),
                     ),
                     SizedBox(height: 4),
                     Text(
                       '**** **** 8291',
-                      style: TextStyle(fontFamily: 'Inter', fontSize: 13, color: Colors.black54, fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 13,
+                          color: Colors.black54,
+                          fontWeight: FontWeight.w500),
                     ),
                   ],
                 ),
@@ -300,7 +316,7 @@ class ProviderWalletScreen extends StatelessWidget {
       itemBuilder: (context, index) {
         final tx = transactions[index];
         final isIncome = tx['isIncome'];
-        
+
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
@@ -315,12 +331,18 @@ class ProviderWalletScreen extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: isIncome ? const Color(0xFFE8F5E9) : const Color(0xFFFFEBEE),
+                  color: isIncome
+                      ? const Color(0xFFE8F5E9)
+                      : const Color(0xFFFFEBEE),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
-                  isIncome ? Icons.south_west_rounded : Icons.north_east_rounded,
-                  color: isIncome ? const Color(0xFF388E3C) : const Color(0xFFD32F2F),
+                  isIncome
+                      ? Icons.south_west_rounded
+                      : Icons.north_east_rounded,
+                  color: isIncome
+                      ? const Color(0xFF388E3C)
+                      : const Color(0xFFD32F2F),
                   size: 20,
                 ),
               ),

@@ -67,22 +67,28 @@ class AdminSettingsScreen extends StatelessWidget {
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [BoxShadow(color: Color(0x336950F4), blurRadius: 10, offset: Offset(0, 4))],
+        boxShadow: const [
+          BoxShadow(
+              color: Color(0x336950F4), blurRadius: 10, offset: Offset(0, 4))
+        ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           _buildStatItem('Users', '12.4K', Icons.groups_rounded, Colors.white),
           Container(width: 1, height: 40, color: Colors.white24),
-          _buildStatItem('Providers', '850', Icons.storefront_rounded, Colors.amber),
+          _buildStatItem(
+              'Providers', '850', Icons.storefront_rounded, Colors.amber),
           Container(width: 1, height: 40, color: Colors.white24),
-          _buildStatItem('Revenue', '৳145K', Icons.toll_rounded, const Color(0xFF00E676)),
+          _buildStatItem(
+              'Revenue', '৳145K', Icons.toll_rounded, const Color(0xFF00E676)),
         ],
       ),
     );
   }
 
-  Widget _buildStatItem(String label, String value, IconData icon, Color iconColor) {
+  Widget _buildStatItem(
+      String label, String value, IconData icon, Color iconColor) {
     return Column(
       children: [
         Row(
@@ -90,30 +96,48 @@ class AdminSettingsScreen extends StatelessWidget {
           children: [
             Icon(icon, color: iconColor, size: 16),
             const SizedBox(width: 4),
-            Text(value, style: const TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
+            Text(value,
+                style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white)),
           ],
         ),
         const SizedBox(height: 4),
-        Text(label, style: const TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w500, color: Colors.white70)),
+        Text(label,
+            style: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: Colors.white70)),
       ],
     );
   }
 
   // ── Menu Card with 4-column icon grid (matching provider profile exactly) ──
-  Widget _buildMenuCard(BuildContext context, String title, List<Map<String, dynamic>> items) {
+  Widget _buildMenuCard(
+      BuildContext context, String title, List<Map<String, dynamic>> items) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 2))],
+        boxShadow: const [
+          BoxShadow(
+              color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 2))
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: const TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w800, color: Colors.black87),
+            style: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: Colors.black87),
           ),
           const SizedBox(height: 20),
           GridView.builder(
@@ -190,7 +214,8 @@ class AdminSettingsScreen extends StatelessWidget {
         },
         style: OutlinedButton.styleFrom(
           side: const BorderSide(color: Color(0xFFD32F2F), width: 1.5),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -199,7 +224,11 @@ class AdminSettingsScreen extends StatelessWidget {
             SizedBox(width: 8),
             Text(
               'Log Out',
-              style: TextStyle(fontFamily: 'Inter', fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFFD32F2F)),
+              style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFFD32F2F)),
             ),
           ],
         ),

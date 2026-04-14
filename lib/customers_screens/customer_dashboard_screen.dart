@@ -56,14 +56,46 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
   bool _isLoadingRecommended = true;
 
   final List<Map<String, dynamic>> _allServices = [
-    {'image': 'lib/media/AC_servicing.png',           'label': 'AC Repair',    'bg': const Color(0xFFE8F4FD)},
-    {'image': 'lib/media/electronics_servicing.png',  'label': 'Electronics',  'bg': const Color(0xFFFFF3E0)},
-    {'image': 'lib/media/fan_light_servicing.png',    'label': 'Fan & Light',  'bg': const Color(0xFFE8F5E9)},
-    {'image': 'lib/media/fridge_servicing.png',       'label': 'Fridge',       'bg': const Color(0xFFEDE9FF)},
-    {'image': 'lib/media/paint_servicing.png',        'label': 'Painting',     'bg': const Color(0xFFFCE4EC)},
-    {'image': 'lib/media/TV_servicing.png',           'label': 'TV Repair',    'bg': const Color(0xFFE3F2FD)},
-    {'image': 'lib/media/water_filter_servicing.png', 'label': 'Water Filter', 'bg': const Color(0xFFFFFDE7)},
-    {'icon': Icons.grid_view_rounded,                 'label': 'Explore All',  'bg': const Color(0xFFF5F5F5)},
+    {
+      'image': 'lib/media/AC_servicing.png',
+      'label': 'AC Repair',
+      'bg': const Color(0xFFE8F4FD)
+    },
+    {
+      'image': 'lib/media/electronics_servicing.png',
+      'label': 'Electronics',
+      'bg': const Color(0xFFFFF3E0)
+    },
+    {
+      'image': 'lib/media/fan_light_servicing.png',
+      'label': 'Fan & Light',
+      'bg': const Color(0xFFE8F5E9)
+    },
+    {
+      'image': 'lib/media/fridge_servicing.png',
+      'label': 'Fridge',
+      'bg': const Color(0xFFEDE9FF)
+    },
+    {
+      'image': 'lib/media/paint_servicing.png',
+      'label': 'Painting',
+      'bg': const Color(0xFFFCE4EC)
+    },
+    {
+      'image': 'lib/media/TV_servicing.png',
+      'label': 'TV Repair',
+      'bg': const Color(0xFFE3F2FD)
+    },
+    {
+      'image': 'lib/media/water_filter_servicing.png',
+      'label': 'Water Filter',
+      'bg': const Color(0xFFFFFDE7)
+    },
+    {
+      'icon': Icons.grid_view_rounded,
+      'label': 'Explore All',
+      'bg': const Color(0xFFF5F5F5)
+    },
   ];
 
   // ── Lifecycle ────────────────────────────────────────────────
@@ -112,9 +144,8 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
         final regular = (row['regular_price'] as num?)?.toDouble() ?? 0;
         final offer = (row['offer_price'] as num?)?.toDouble();
         final hasDiscount = offer != null && offer > 0 && offer < regular;
-        final discountPct = hasDiscount
-            ? (((regular - offer) / regular) * 100).round()
-            : null;
+        final discountPct =
+            hasDiscount ? (((regular - offer) / regular) * 100).round() : null;
         final serviceId = row['id'] as String?;
         final imageUrl =
             serviceId == null ? '' : (coverImageByServiceId[serviceId] ?? '');
@@ -217,7 +248,8 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
-          child: const Icon(Icons.search_rounded, color: Colors.white, size: 24),
+          child:
+              const Icon(Icons.search_rounded, color: Colors.white, size: 24),
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
@@ -334,7 +366,6 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
                   ),
                 ],
               ),
-
             ],
           ),
         ),
@@ -503,7 +534,8 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
           boxShadow: const [
-            BoxShadow(color: Color(0x0A000000), blurRadius: 8, offset: Offset(0, 4)),
+            BoxShadow(
+                color: Color(0x0A000000), blurRadius: 8, offset: Offset(0, 4)),
           ],
         ),
         child: const Text(
@@ -524,7 +556,8 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
         scrollDirection: Axis.horizontal,
         clipBehavior: Clip.none,
         itemCount: _recommendedServices.length,
-        itemBuilder: (_, i) => _buildRecomendedServiceCard(_recommendedServices[i]),
+        itemBuilder: (_, i) =>
+            _buildRecomendedServiceCard(_recommendedServices[i]),
       ),
     );
   }
@@ -538,10 +571,7 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
         borderRadius: BorderRadius.circular(14),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x0A000000), 
-            blurRadius: 8, 
-            offset: Offset(0, 4)
-          ),
+              color: Color(0x0A000000), blurRadius: 8, offset: Offset(0, 4)),
         ],
       ),
       clipBehavior: Clip.antiAlias,
@@ -554,7 +584,8 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
               Container(
                 height: 110,
                 width: 160,
-                color: const Color(0xFFF9F9F9), // Light bg for transparent images
+                color:
+                    const Color(0xFFF9F9F9), // Light bg for transparent images
                 child: (s['image'] as String).isNotEmpty
                     ? Image.network(
                         s['image'] as String,
@@ -565,15 +596,16 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
                         ),
                       )
                     : const Center(
-                        child: Icon(Icons.image_outlined, color: Colors.black26),
+                        child:
+                            Icon(Icons.image_outlined, color: Colors.black26),
                       ),
               ),
               Positioned(
                 top: 8,
                 left: 8,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: Colors.amber.shade700,
                     borderRadius: BorderRadius.circular(6),
@@ -657,7 +689,8 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
       itemCount: _allServices.length,
       itemBuilder: (_, i) {
         final s = _allServices[i];
-        final isButton = s.containsKey('icon'); // Check if it's the 8th item button
+        final isButton =
+            s.containsKey('icon'); // Check if it's the 8th item button
 
         return Container(
           decoration: BoxDecoration(
@@ -710,8 +743,10 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
                       style: TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 13,
-                        fontWeight: isButton ? FontWeight.w700 : FontWeight.w600,
-                        color: isButton ? const Color(0xFF6950F4) : Colors.black87,
+                        fontWeight:
+                            isButton ? FontWeight.w700 : FontWeight.w600,
+                        color:
+                            isButton ? const Color(0xFF6950F4) : Colors.black87,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -751,17 +786,23 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             _buildNavItem(icon: Icons.home_rounded, label: 'Home', index: 0),
-            _buildNavItem(icon: Icons.grid_view_rounded, label: 'Services', index: 1),
+            _buildNavItem(
+                icon: Icons.grid_view_rounded, label: 'Services', index: 1),
             const SizedBox(width: 40), // Reduced space for smaller FAB
-            _buildNavItem(icon: Icons.calendar_month_outlined, label: 'Booking', index: 2),
-            _buildNavItem(icon: Icons.person_outline_rounded, label: 'Profile', index: 3),
+            _buildNavItem(
+                icon: Icons.calendar_month_outlined,
+                label: 'Booking',
+                index: 2),
+            _buildNavItem(
+                icon: Icons.person_outline_rounded, label: 'Profile', index: 3),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildNavItem({required IconData icon, required String label, required int index}) {
+  Widget _buildNavItem(
+      {required IconData icon, required String label, required int index}) {
     final selected = _selectedNavIndex == index;
     return GestureDetector(
       onTap: () => setState(() => _selectedNavIndex = index),

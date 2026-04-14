@@ -42,8 +42,10 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
     setState(() => _isBootstrapping = true);
 
     final serviceId = (widget.serviceData?['id'] as String?)?.trim() ?? '';
-    var providerId = (widget.serviceData?['providerId'] as String?)?.trim() ?? '';
-    final durationText = (widget.serviceData?['durationText'] as String?)?.trim() ?? '';
+    var providerId =
+        (widget.serviceData?['providerId'] as String?)?.trim() ?? '';
+    final durationText =
+        (widget.serviceData?['durationText'] as String?)?.trim() ?? '';
 
     _serviceId = serviceId;
     _providerId = providerId;
@@ -52,7 +54,8 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
     final client = Supabase.instance.client;
 
     try {
-      if (_serviceId.isNotEmpty && (_providerId.isEmpty || durationText.isEmpty)) {
+      if (_serviceId.isNotEmpty &&
+          (_providerId.isEmpty || durationText.isEmpty)) {
         final row = await client
             .from('services')
             .select('provider_id, duration_text')
@@ -130,7 +133,8 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
 
     for (int offset = 0; offset < 30 && dates.length < 7; offset++) {
       final date = now.add(Duration(days: offset));
-      final dbWeekday = date.weekday % 7; // Dart Mon=1..Sun=7 -> DB Sun=0..Sat=6
+      final dbWeekday =
+          date.weekday % 7; // Dart Mon=1..Sun=7 -> DB Sun=0..Sat=6
       if (!_workingDays.contains(dbWeekday)) {
         continue;
       }
@@ -170,9 +174,11 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
           .select('booking_status, time_slot_text, scheduled_at')
           .eq('provider_id', _providerId)
           .eq('booking_date', selectedDate)
-          .inFilter(
-              'booking_status', const ['pending', 'accepted', 'in_progress'])
-          .order('scheduled_at', ascending: true);
+          .inFilter('booking_status', const [
+        'pending',
+        'accepted',
+        'in_progress'
+      ]).order('scheduled_at', ascending: true);
 
       final bookedIntervals = List<Map<String, dynamic>>.from(bookingRows)
           .map(_extractBookedInterval)
@@ -218,7 +224,8 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
     int? endMinutes = parsedRange?.$2;
 
     final scheduledAtRaw = row['scheduled_at'] as String?;
-    final scheduledAt = scheduledAtRaw == null ? null : DateTime.tryParse(scheduledAtRaw);
+    final scheduledAt =
+        scheduledAtRaw == null ? null : DateTime.tryParse(scheduledAtRaw);
     if (startMinutes == null && scheduledAt != null) {
       startMinutes = scheduledAt.hour * 60 + scheduledAt.minute;
     }
@@ -226,11 +233,14 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
       endMinutes = startMinutes + 30;
     }
 
-    if (startMinutes == null || endMinutes == null || endMinutes <= startMinutes) {
+    if (startMinutes == null ||
+        endMinutes == null ||
+        endMinutes <= startMinutes) {
       return null;
     }
 
-    return _SlotInterval(startMinutes: startMinutes, endMinutes: endMinutes, isBooked: true);
+    return _SlotInterval(
+        startMinutes: startMinutes, endMinutes: endMinutes, isBooked: true);
   }
 
   List<Map<String, dynamic>> _generateSlots({
@@ -283,7 +293,8 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
           (e) => _SlotInterval(
             startMinutes:
                 e.startMinutes.clamp(workStartMinutes, workEndMinutes).toInt(),
-            endMinutes: e.endMinutes.clamp(workStartMinutes, workEndMinutes).toInt(),
+            endMinutes:
+                e.endMinutes.clamp(workStartMinutes, workEndMinutes).toInt(),
             isBooked: true,
           ),
         )
@@ -298,7 +309,8 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
     return all
         .map(
           (slot) => <String, dynamic>{
-            'time': '${_formatTime(slot.startMinutes)} - ${_formatTime(slot.endMinutes)}',
+            'time':
+                '${_formatTime(slot.startMinutes)} - ${_formatTime(slot.endMinutes)}',
             'isBooked': slot.isBooked,
             'startMinutes': slot.startMinutes,
             'endMinutes': slot.endMinutes,
@@ -323,13 +335,15 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
     final value = raw.trim();
     if (value.isEmpty) return null;
 
-    final match = RegExp(r'^(\d{1,2})(?::(\d{1,2}))?\s*([AaPp][Mm])?$').firstMatch(value);
+    final match =
+        RegExp(r'^(\d{1,2})(?::(\d{1,2}))?\s*([AaPp][Mm])?$').firstMatch(value);
     if (match == null) return null;
 
     var hour = int.tryParse(match.group(1) ?? '');
     final minute = int.tryParse(match.group(2) ?? '0');
     final ampm = match.group(3)?.toLowerCase();
-    if (hour == null || minute == null || minute < 0 || minute > 59) return null;
+    if (hour == null || minute == null || minute < 0 || minute > 59)
+      return null;
 
     if (ampm != null) {
       if (hour < 1 || hour > 12) return null;
@@ -350,7 +364,8 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
     if (text.isEmpty) return 60;
 
     final hourMatch = RegExp(r'(\d+)\s*(h|hr|hrs|hour|hours)').firstMatch(text);
-    final minMatch = RegExp(r'(\d+)\s*(m|min|mins|minute|minutes)').firstMatch(text);
+    final minMatch =
+        RegExp(r'(\d+)\s*(m|min|mins|minute|minutes)').firstMatch(text);
     final plainNumber = RegExp(r'^\d+$').firstMatch(text);
 
     int minutes = 0;
@@ -403,7 +418,8 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 child: Column(
                   children: [
                     _buildNoticeBanner(),
@@ -487,7 +503,8 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: const [
-          BoxShadow(color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 2)),
+          BoxShadow(
+              color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 2)),
         ],
       ),
       child: Column(
@@ -504,7 +521,8 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
                   color: Colors.black87,
                 ),
               ),
-              Icon(Icons.calendar_month_outlined, color: Color(0xFFEF9A9A), size: 20),
+              Icon(Icons.calendar_month_outlined,
+                  color: Color(0xFFEF9A9A), size: 20),
             ],
           ),
           const SizedBox(height: 12),
@@ -539,9 +557,12 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
                       width: 52,
                       height: 60,
                       decoration: BoxDecoration(
-                        color: isSelected ? const Color(0xFFE2DCFE) : Colors.white,
+                        color:
+                            isSelected ? const Color(0xFFE2DCFE) : Colors.white,
                         border: Border.all(
-                          color: isSelected ? const Color(0xFF6950F4) : const Color(0xFFE0E0E0),
+                          color: isSelected
+                              ? const Color(0xFF6950F4)
+                              : const Color(0xFFE0E0E0),
                           width: 1.2,
                         ),
                         borderRadius: BorderRadius.circular(8),
@@ -554,8 +575,12 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
                             style: TextStyle(
                               fontFamily: 'Inter',
                               fontSize: 10,
-                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                              color: isSelected ? const Color(0xFF6950F4) : Colors.black87,
+                              fontWeight: isSelected
+                                  ? FontWeight.w600
+                                  : FontWeight.w500,
+                              color: isSelected
+                                  ? const Color(0xFF6950F4)
+                                  : Colors.black87,
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -564,8 +589,12 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
                             style: TextStyle(
                               fontFamily: 'Inter',
                               fontSize: 14,
-                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                              color: isSelected ? const Color(0xFF6950F4) : Colors.black87,
+                              fontWeight: isSelected
+                                  ? FontWeight.w700
+                                  : FontWeight.w600,
+                              color: isSelected
+                                  ? const Color(0xFF6950F4)
+                                  : Colors.black87,
                             ),
                           ),
                         ],
@@ -587,7 +616,8 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: const [
-          BoxShadow(color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 2)),
+          BoxShadow(
+              color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 2)),
         ],
       ),
       child: Column(
@@ -631,7 +661,9 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
                 final isSelected = _selectedTimeIndex == index;
 
                 return GestureDetector(
-                  onTap: isBooked ? null : () => setState(() => _selectedTimeIndex = index),
+                  onTap: isBooked
+                      ? null
+                      : () => setState(() => _selectedTimeIndex = index),
                   child: Container(
                     decoration: BoxDecoration(
                       color: isBooked
@@ -658,7 +690,9 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
                             fontFamily: 'Inter',
                             fontSize: 10.2,
                             fontWeight: FontWeight.w600,
-                            color: isSelected ? const Color(0xFF6950F4) : Colors.black87,
+                            color: isSelected
+                                ? const Color(0xFF6950F4)
+                                : Colors.black87,
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -686,7 +720,8 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
   }
 
   void _showConfirmationDialog() {
-    if (_selectedTimeIndex == null || _selectedTimeIndex! >= _timeSlots.length) {
+    if (_selectedTimeIndex == null ||
+        _selectedTimeIndex! >= _timeSlots.length) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select an available time slot.')),
       );
@@ -704,7 +739,8 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
     final name = (widget.serviceData?['name'] as String?)?.trim() ?? '';
     final category = (widget.serviceData?['category'] as String?)?.trim() ?? '';
     final price = (widget.serviceData?['price'] ?? '').toString();
-    final provider = (widget.serviceData?['providerName'] as String?)?.trim() ?? '';
+    final provider =
+        (widget.serviceData?['providerName'] as String?)?.trim() ?? '';
 
     final selectedDateString = _dates[_selectedDateIndex]['fullDate'] ?? '';
     final selectedTimeString = selectedSlot['time'] as String? ?? '';
@@ -742,7 +778,8 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
               children: [
                 const Text(
                   'Total Cost:',
-                  style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                      fontFamily: 'Inter', fontWeight: FontWeight.w700),
                 ),
                 Text(
                   'BDT $price',
@@ -760,7 +797,8 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: Colors.black54)),
+            child:
+                const Text('Cancel', style: TextStyle(color: Colors.black54)),
           ),
           ElevatedButton(
             onPressed: _isSubmitting
@@ -771,11 +809,13 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
                   },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF6950F4),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
             ),
             child: const Text(
               'Book',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -784,7 +824,8 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
   }
 
   Future<void> _processBooking() async {
-    if (_selectedTimeIndex == null || _selectedTimeIndex! >= _timeSlots.length) return;
+    if (_selectedTimeIndex == null || _selectedTimeIndex! >= _timeSlots.length)
+      return;
     if (_serviceId.isEmpty || _providerId.isEmpty || _dates.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Service information is incomplete.')),
@@ -828,9 +869,11 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
           .select('time_slot_text, scheduled_at')
           .eq('provider_id', _providerId)
           .eq('booking_date', selectedDate)
-          .inFilter('booking_status', const ['pending', 'accepted', 'in_progress']);
+          .inFilter(
+              'booking_status', const ['pending', 'accepted', 'in_progress']);
 
-      final hasConflict = List<Map<String, dynamic>>.from(dayBookings).any((row) {
+      final hasConflict =
+          List<Map<String, dynamic>>.from(dayBookings).any((row) {
         final interval = _extractBookedInterval(row);
         if (interval == null) return false;
         return slotStartMinutes < interval.endMinutes &&
@@ -841,7 +884,8 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('This slot was just booked by someone else. Please choose another.'),
+            content: Text(
+                'This slot was just booked by someone else. Please choose another.'),
           ),
         );
         await _loadSlotsForSelectedDate();
@@ -851,20 +895,20 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
       final inserted = await client
           .from('bookings')
           .insert({
-        'booking_code': _generateBookingCode(),
-        'customer_id': customerId,
-        'provider_id': _providerId,
-        'service_id': _serviceId,
-        'booking_date': selectedDate,
-        'time_slot_text': slotText,
-        'scheduled_at': scheduledAt.toIso8601String(),
-        'quantity': 1,
-        'unit_price': unitPrice,
-        'total_amount': unitPrice,
-        'payment_method': 'offline',
-        'payment_status': 'unpaid',
-        'booking_status': 'pending',
-      })
+            'booking_code': _generateBookingCode(),
+            'customer_id': customerId,
+            'provider_id': _providerId,
+            'service_id': _serviceId,
+            'booking_date': selectedDate,
+            'time_slot_text': slotText,
+            'scheduled_at': scheduledAt.toIso8601String(),
+            'quantity': 1,
+            'unit_price': unitPrice,
+            'total_amount': unitPrice,
+            'payment_method': 'offline',
+            'payment_status': 'unpaid',
+            'booking_status': 'pending',
+          })
           .select('id')
           .single();
 
@@ -960,7 +1004,9 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
 
   Widget _buildConfirmButton() {
     return ElevatedButton(
-      onPressed: (_selectedTimeIndex == null || _isSubmitting) ? null : _showConfirmationDialog,
+      onPressed: (_selectedTimeIndex == null || _isSubmitting)
+          ? null
+          : _showConfirmationDialog,
       style: ElevatedButton.styleFrom(
         backgroundColor: const Color(0xFF8B5CF6),
         minimumSize: const Size(double.infinity, 46),

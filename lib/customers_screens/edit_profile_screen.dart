@@ -153,7 +153,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       });
 
       final ext = _fileExtension(picked.name);
-      final path = '$userId/profile-${DateTime.now().millisecondsSinceEpoch}.$ext';
+      final path =
+          '$userId/profile-${DateTime.now().millisecondsSinceEpoch}.$ext';
       final contentType = _contentTypeForExtension(ext);
 
       await client.storage.from('customer-profile-images').uploadBinary(
@@ -171,7 +172,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Image uploaded. Tap Save Changes to apply.')),
+        const SnackBar(
+            content: Text('Image uploaded. Tap Save Changes to apply.')),
       );
     } catch (_) {
       if (mounted) {
@@ -267,7 +269,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               decoration: BoxDecoration(
                                 color: const Color(0xFF6950F4), // Purple brand
                                 shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 2),
+                                border:
+                                    Border.all(color: Colors.white, width: 2),
                               ),
                               child: _isUploadingImage
                                   ? const SizedBox(

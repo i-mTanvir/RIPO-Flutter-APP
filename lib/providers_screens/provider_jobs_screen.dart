@@ -90,7 +90,8 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
         final locationMap = row['locations'] as Map<String, dynamic>?;
         final customerId = row['customer_id'] as String?;
         final amount = (row['total_amount'] as num?)?.toDouble() ?? 0;
-        final addressLine = (locationMap?['address_line'] as String?)?.trim() ?? '';
+        final addressLine =
+            (locationMap?['address_line'] as String?)?.trim() ?? '';
         final area = (locationMap?['area'] as String?)?.trim() ?? '';
         final city = (locationMap?['city'] as String?)?.trim() ?? '';
 
@@ -98,16 +99,20 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
           'id': row['id'],
           'bookingCode': (row['booking_code'] as String?)?.trim() ?? '',
           'statusRaw': (row['booking_status'] as String?)?.trim() ?? 'pending',
-          'customerName': customerId == null ? '' : (customerNameById[customerId] ?? ''),
+          'customerName':
+              customerId == null ? '' : (customerNameById[customerId] ?? ''),
           'customerAvatarUrl':
               customerId == null ? '' : (customerAvatarById[customerId] ?? ''),
           'serviceName': (serviceMap?['name'] as String?)?.trim() ?? '',
-          'address': [addressLine, area, city].where((e) => e.isNotEmpty).join(', '),
+          'address':
+              [addressLine, area, city].where((e) => e.isNotEmpty).join(', '),
           'date': _formatBookingDate(
             (row['booking_date'] as String?)?.trim() ?? '',
             (row['time_slot_text'] as String?)?.trim() ?? '',
           ),
-          'price': amount % 1 == 0 ? amount.toStringAsFixed(0) : amount.toStringAsFixed(2),
+          'price': amount % 1 == 0
+              ? amount.toStringAsFixed(0)
+              : amount.toStringAsFixed(2),
         };
       }).toList();
 
@@ -168,8 +173,22 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
   String _formatBookingDate(String bookingDate, String slot) {
     if (bookingDate.isEmpty && slot.isEmpty) return '';
     final dt = DateTime.tryParse(bookingDate);
-    if (dt == null) return '$bookingDate ${slot.isEmpty ? '' : '- $slot'}'.trim();
-    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    if (dt == null)
+      return '$bookingDate ${slot.isEmpty ? '' : '- $slot'}'.trim();
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
     final dateText = '${dt.day} ${months[dt.month - 1]} ${dt.year}';
     return slot.isEmpty ? dateText : '$dateText, $slot';
   }
@@ -197,11 +216,13 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
       _jobs.where((j) => (j['statusRaw'] as String) == 'pending').toList();
 
   List<Map<String, dynamic>> get _activeJobs => _jobs
-      .where((j) => ['accepted', 'in_progress'].contains(j['statusRaw'] as String))
+      .where(
+          (j) => ['accepted', 'in_progress'].contains(j['statusRaw'] as String))
       .toList();
 
   List<Map<String, dynamic>> get _completedJobs => _jobs
-      .where((j) => ['completed', 'rejected', 'cancelled'].contains(j['statusRaw'] as String))
+      .where((j) => ['completed', 'rejected', 'cancelled']
+          .contains(j['statusRaw'] as String))
       .toList();
 
   @override
@@ -263,9 +284,10 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
       color: Colors.white,
       child: TabBar(
         controller: _tabController,
-        labelStyle: const TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w700),
-        unselectedLabelStyle:
-            const TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w500),
+        labelStyle: const TextStyle(
+            fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w700),
+        unselectedLabelStyle: const TextStyle(
+            fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w500),
         labelColor: const Color(0xFF6950F4),
         unselectedLabelColor: Colors.black45,
         indicatorColor: const Color(0xFF6950F4),
@@ -289,14 +311,19 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
         final bookingId = j['id'] as String;
         final isUpdating = _updatingBookingId == bookingId;
         return Padding(
-          padding: EdgeInsets.only(bottom: i == _requestJobs.length - 1 ? 0 : 16),
+          padding:
+              EdgeInsets.only(bottom: i == _requestJobs.length - 1 ? 0 : 16),
           child: _buildJobCard(
             status: 'Pending Request',
             statusColor: const Color(0xFFFF8F00),
             statusBgColor: const Color(0xFFFFF3E0),
-            name: (j['customerName'] as String).isEmpty ? 'Customer' : j['customerName'] as String,
+            name: (j['customerName'] as String).isEmpty
+                ? 'Customer'
+                : j['customerName'] as String,
             service: j['serviceName'] as String,
-            address: (j['address'] as String).isEmpty ? 'Address not provided' : j['address'] as String,
+            address: (j['address'] as String).isEmpty
+                ? 'Address not provided'
+                : j['address'] as String,
             date: j['date'] as String,
             price: j['price'] as String,
             customerAvatarUrl: j['customerAvatarUrl'] as String,
@@ -306,10 +333,12 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
               positiveLabel: 'Accept',
               onNegative: isUpdating
                   ? null
-                  : () => _updateBookingStatus(bookingId: bookingId, status: 'rejected'),
+                  : () => _updateBookingStatus(
+                      bookingId: bookingId, status: 'rejected'),
               onPositive: isUpdating
                   ? null
-                  : () => _updateBookingStatus(bookingId: bookingId, status: 'accepted'),
+                  : () => _updateBookingStatus(
+                      bookingId: bookingId, status: 'accepted'),
             ),
           ),
         );
@@ -328,29 +357,38 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
         final isUpdating = _updatingBookingId == bookingId;
         final statusRaw = j['statusRaw'] as String;
         return Padding(
-          padding: EdgeInsets.only(bottom: i == _activeJobs.length - 1 ? 0 : 16),
+          padding:
+              EdgeInsets.only(bottom: i == _activeJobs.length - 1 ? 0 : 16),
           child: _buildJobCard(
             status: statusRaw == 'accepted' ? 'Accepted' : 'In Progress',
             statusColor: const Color(0xFF1E88E5),
             statusBgColor: const Color(0xFFE8F4FD),
-            name: (j['customerName'] as String).isEmpty ? 'Customer' : j['customerName'] as String,
+            name: (j['customerName'] as String).isEmpty
+                ? 'Customer'
+                : j['customerName'] as String,
             service: j['serviceName'] as String,
-            address: (j['address'] as String).isEmpty ? 'Address not provided' : j['address'] as String,
+            address: (j['address'] as String).isEmpty
+                ? 'Address not provided'
+                : j['address'] as String,
             date: j['date'] as String,
             price: j['price'] as String,
             customerAvatarUrl: j['customerAvatarUrl'] as String,
             showContactOptions: true,
             actionButtons: _buildActionButtons(
               negativeLabel: 'Cancel Job',
-              positiveLabel: statusRaw == 'accepted' ? 'Start Job' : 'Mark Completed',
+              positiveLabel:
+                  statusRaw == 'accepted' ? 'Start Job' : 'Mark Completed',
               onNegative: isUpdating
                   ? null
-                  : () => _updateBookingStatus(bookingId: bookingId, status: 'cancelled'),
+                  : () => _updateBookingStatus(
+                      bookingId: bookingId, status: 'cancelled'),
               onPositive: isUpdating
                   ? null
                   : () => _updateBookingStatus(
                         bookingId: bookingId,
-                        status: statusRaw == 'accepted' ? 'in_progress' : 'completed',
+                        status: statusRaw == 'accepted'
+                            ? 'in_progress'
+                            : 'completed',
                       ),
             ),
           ),
@@ -360,7 +398,8 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
   }
 
   Widget _buildCompletedTab() {
-    if (_completedJobs.isEmpty) return _buildEmpty('No completed/rejected jobs yet.');
+    if (_completedJobs.isEmpty)
+      return _buildEmpty('No completed/rejected jobs yet.');
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: _completedJobs.length,
@@ -368,21 +407,24 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
         final j = _completedJobs[i];
         final statusRaw = j['statusRaw'] as String;
         final isCompleted = statusRaw == 'completed';
-        final statusColor = isCompleted
-            ? const Color(0xFF43A047)
-            : const Color(0xFFE74C3C);
-        final statusBgColor = isCompleted
-            ? const Color(0xFFE8F5E9)
-            : const Color(0xFFFADBD8);
+        final statusColor =
+            isCompleted ? const Color(0xFF43A047) : const Color(0xFFE74C3C);
+        final statusBgColor =
+            isCompleted ? const Color(0xFFE8F5E9) : const Color(0xFFFADBD8);
         return Padding(
-          padding: EdgeInsets.only(bottom: i == _completedJobs.length - 1 ? 0 : 16),
+          padding:
+              EdgeInsets.only(bottom: i == _completedJobs.length - 1 ? 0 : 16),
           child: _buildJobCard(
             status: _prettyStatus(statusRaw),
             statusColor: statusColor,
             statusBgColor: statusBgColor,
-            name: (j['customerName'] as String).isEmpty ? 'Customer' : j['customerName'] as String,
+            name: (j['customerName'] as String).isEmpty
+                ? 'Customer'
+                : j['customerName'] as String,
             service: j['serviceName'] as String,
-            address: (j['address'] as String).isEmpty ? 'Address not provided' : j['address'] as String,
+            address: (j['address'] as String).isEmpty
+                ? 'Address not provided'
+                : j['address'] as String,
             date: j['date'] as String,
             price: j['price'] as String,
             customerAvatarUrl: j['customerAvatarUrl'] as String,
@@ -428,7 +470,8 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: const [
-          BoxShadow(color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 4)),
+          BoxShadow(
+              color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 4)),
         ],
       ),
       child: Column(
@@ -438,7 +481,8 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
                   color: statusBgColor,
                   borderRadius: BorderRadius.circular(8),
@@ -476,7 +520,8 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
                 ),
                 clipBehavior: Clip.antiAlias,
                 child: avatarProvider == null
-                    ? const Icon(Icons.person, color: Color(0xFF1E88E5), size: 26)
+                    ? const Icon(Icons.person,
+                        color: Color(0xFF1E88E5), size: 26)
                     : Image(
                         image: avatarProvider,
                         fit: BoxFit.cover,
@@ -512,9 +557,11 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
               if (showContactOptions)
                 Row(
                   children: [
-                    _buildIconButton(Icons.chat_bubble_rounded, const Color(0xFF6950F4)),
+                    _buildIconButton(
+                        Icons.chat_bubble_rounded, const Color(0xFF6950F4)),
                     const SizedBox(width: 8),
-                    _buildIconButton(Icons.call_rounded, const Color(0xFF43A047)),
+                    _buildIconButton(
+                        Icons.call_rounded, const Color(0xFF43A047)),
                   ],
                 ),
             ],
@@ -524,12 +571,14 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
           const SizedBox(height: 16),
           Row(
             children: [
-              const Icon(Icons.location_on_rounded, size: 16, color: Colors.black38),
+              const Icon(Icons.location_on_rounded,
+                  size: 16, color: Colors.black38),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   address,
-                  style: const TextStyle(fontFamily: 'Inter', fontSize: 13, color: Colors.black54),
+                  style: const TextStyle(
+                      fontFamily: 'Inter', fontSize: 13, color: Colors.black54),
                 ),
               ),
             ],
@@ -537,12 +586,14 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
           const SizedBox(height: 8),
           Row(
             children: [
-              const Icon(Icons.calendar_month_rounded, size: 16, color: Colors.black38),
+              const Icon(Icons.calendar_month_rounded,
+                  size: 16, color: Colors.black38),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   date,
-                  style: const TextStyle(fontFamily: 'Inter', fontSize: 13, color: Colors.black54),
+                  style: const TextStyle(
+                      fontFamily: 'Inter', fontSize: 13, color: Colors.black54),
                 ),
               ),
             ],
@@ -555,7 +606,8 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
             const SizedBox(height: 16),
             const Row(
               children: [
-                Icon(Icons.check_circle_rounded, size: 16, color: Color(0xFF43A047)),
+                Icon(Icons.check_circle_rounded,
+                    size: 16, color: Color(0xFF43A047)),
                 SizedBox(width: 6),
                 Text(
                   'Payment Received',
@@ -599,7 +651,8 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
             onPressed: onNegative,
             style: OutlinedButton.styleFrom(
               side: const BorderSide(color: Color(0xFFFF5252)),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
               padding: const EdgeInsets.symmetric(vertical: 14),
             ),
             child: Text(
@@ -620,7 +673,8 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF6950F4),
               elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
               padding: const EdgeInsets.symmetric(vertical: 14),
             ),
             child: Text(

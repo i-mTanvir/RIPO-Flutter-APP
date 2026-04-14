@@ -32,7 +32,8 @@ class _LoginScreenState extends State<LoginScreen> {
     final password = _passwordController.text.trim();
 
     if (email.isEmpty || password.isEmpty) {
-      context.showAppSnackBar('Email and password are required.', isError: true);
+      context.showAppSnackBar('Email and password are required.',
+          isError: true);
       return;
     }
 
@@ -51,7 +52,8 @@ class _LoginScreenState extends State<LoginScreen> {
       context.showAppSnackBar(error.message, isError: true);
     } catch (_) {
       if (!mounted) return;
-      context.showAppSnackBar('Invalid email or password. Try again.', isError: true);
+      context.showAppSnackBar('Invalid email or password. Try again.',
+          isError: true);
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -86,7 +88,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   OutlinedButton.icon(
                     onPressed: () {},
-                    icon: const Icon(Icons.language, size: 16, color: Colors.black54),
+                    icon: const Icon(Icons.language,
+                        size: 16, color: Colors.black54),
                     label: const Text(
                       'English',
                       style: TextStyle(
@@ -100,7 +103,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
                     ),
                   ),
                 ],
@@ -141,7 +145,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     fontSize: 14,
                     color: Colors.black38,
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
                     borderSide: const BorderSide(color: Colors.black26),
@@ -186,7 +191,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     fontSize: 14,
                     color: Colors.black38,
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
                     borderSide: const BorderSide(color: Colors.black26),
@@ -220,7 +226,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     children: [
                       Checkbox(
                         value: _rememberMe,
-                        onChanged: (val) => setState(() => _rememberMe = val ?? false),
+                        onChanged: (val) =>
+                            setState(() => _rememberMe = val ?? false),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(3),
                         ),
@@ -242,7 +249,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const ForgetPasswordScreen()),
+                        MaterialPageRoute(
+                            builder: (_) => const ForgetPasswordScreen()),
                       );
                     },
                     child: const Text(
@@ -296,7 +304,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         onTap: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (_) => const SignupScreen()),
+                            MaterialPageRoute(
+                                builder: (_) => const SignupScreen()),
                           );
                         },
                         child: const Text(

@@ -87,7 +87,8 @@ class _SignupScreenState extends State<SignupScreen> {
           fontSize: 14,
           color: Colors.black38,
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: const BorderSide(color: Colors.black26),
@@ -177,7 +178,8 @@ class _SignupScreenState extends State<SignupScreen> {
       decoration: InputDecoration(
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: const BorderSide(color: Colors.black26),
@@ -211,7 +213,8 @@ class _SignupScreenState extends State<SignupScreen> {
     final ageText = _ageController.text.trim();
 
     if (fullName.isEmpty || email.isEmpty || password.isEmpty) {
-      context.showAppSnackBar('Full name, email, and password are required.', isError: true);
+      context.showAppSnackBar('Full name, email, and password are required.',
+          isError: true);
       return;
     }
 
@@ -221,18 +224,23 @@ class _SignupScreenState extends State<SignupScreen> {
     }
 
     if (password != confirmPassword) {
-      context.showAppSnackBar('Password and confirm password do not match.', isError: true);
+      context.showAppSnackBar('Password and confirm password do not match.',
+          isError: true);
       return;
     }
 
     if (password.length < 6) {
-      context.showAppSnackBar('Password must be at least 6 characters.', isError: true);
+      context.showAppSnackBar('Password must be at least 6 characters.',
+          isError: true);
       return;
     }
 
     int? age;
     if (_isProvider) {
-      if (nid.isEmpty || license.isEmpty || ageText.isEmpty || _selectedGender == null) {
+      if (nid.isEmpty ||
+          license.isEmpty ||
+          ageText.isEmpty ||
+          _selectedGender == null) {
         context.showAppSnackBar(
           'Provider signup requires NID, license number, gender, and age.',
           isError: true,
@@ -262,7 +270,8 @@ class _SignupScreenState extends State<SignupScreen> {
 
       if (!mounted) return;
       if (result.needsEmailConfirmation) {
-        context.showAppSnackBar('Account created. Please verify your email before login.');
+        context.showAppSnackBar(
+            'Account created. Please verify your email before login.');
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -307,14 +316,12 @@ class _SignupScreenState extends State<SignupScreen> {
                 fit: BoxFit.contain,
               ),
               SizedBox(height: size.height * 0.035),
-
               Align(
                 alignment: Alignment.centerLeft,
                 child: _fieldLabel('Sign Up As'),
               ),
               const SizedBox(height: 8),
               _buildRoleSelector(),
-
               SizedBox(height: size.height * 0.022),
               Align(
                 alignment: Alignment.centerLeft,
@@ -326,7 +333,6 @@ class _SignupScreenState extends State<SignupScreen> {
                 hint: 'Enter Full Name',
                 keyboardType: TextInputType.name,
               ),
-
               SizedBox(height: size.height * 0.022),
               Align(
                 alignment: Alignment.centerLeft,
@@ -338,7 +344,6 @@ class _SignupScreenState extends State<SignupScreen> {
                 hint: 'Enter email address',
                 keyboardType: TextInputType.emailAddress,
               ),
-
               SizedBox(height: size.height * 0.022),
               Align(
                 alignment: Alignment.centerLeft,
@@ -350,7 +355,6 @@ class _SignupScreenState extends State<SignupScreen> {
                 hint: 'Enter phone number',
                 keyboardType: TextInputType.phone,
               ),
-
               if (_isProvider) ...[
                 SizedBox(height: size.height * 0.022),
                 Align(
@@ -404,7 +408,6 @@ class _SignupScreenState extends State<SignupScreen> {
                   ],
                 ),
               ],
-
               SizedBox(height: size.height * 0.022),
               Align(
                 alignment: Alignment.centerLeft,
@@ -418,7 +421,6 @@ class _SignupScreenState extends State<SignupScreen> {
                 onToggleObscure: () =>
                     setState(() => _obscurePassword = !_obscurePassword),
               ),
-
               SizedBox(height: size.height * 0.022),
               Align(
                 alignment: Alignment.centerLeft,
@@ -433,7 +435,6 @@ class _SignupScreenState extends State<SignupScreen> {
                   () => _obscureConfirmPassword = !_obscureConfirmPassword,
                 ),
               ),
-
               SizedBox(height: size.height * 0.04),
               SizedBox(
                 width: double.infinity,
@@ -458,7 +459,6 @@ class _SignupScreenState extends State<SignupScreen> {
                   ),
                 ),
               ),
-
               SizedBox(height: size.height * 0.02),
               RichText(
                 text: TextSpan(
@@ -474,7 +474,8 @@ class _SignupScreenState extends State<SignupScreen> {
                         onTap: () {
                           Navigator.pushReplacement(
                             context,
-                            MaterialPageRoute(builder: (_) => const LoginScreen()),
+                            MaterialPageRoute(
+                                builder: (_) => const LoginScreen()),
                           );
                         },
                         child: const Text(

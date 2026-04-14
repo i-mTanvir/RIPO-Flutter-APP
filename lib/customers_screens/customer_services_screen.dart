@@ -56,7 +56,8 @@ class _CustomerServicesScreenState extends State<CustomerServicesScreen> {
         final regular = (s['regular_price'] as num?)?.toDouble() ?? 0;
         final offer = (s['offer_price'] as num?)?.toDouble();
         final hasDiscount = offer != null && offer > 0 && offer < regular;
-        final discountPct = hasDiscount ? (((regular - offer) / regular) * 100).round() : null;
+        final discountPct =
+            hasDiscount ? (((regular - offer) / regular) * 100).round() : null;
 
         return <String, dynamic>{
           'id': id,
@@ -119,14 +120,16 @@ class _CustomerServicesScreenState extends State<CustomerServicesScreen> {
                         onRefresh: _loadServices,
                         child: GridView.builder(
                           padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 2,
                             crossAxisSpacing: 10,
                             mainAxisSpacing: 12,
                             childAspectRatio: 0.8,
                           ),
                           itemCount: _services.length,
-                          itemBuilder: (_, i) => _buildServiceCard(_services[i]),
+                          itemBuilder: (_, i) =>
+                              _buildServiceCard(_services[i]),
                         ),
                       ),
           ),
@@ -207,18 +210,21 @@ class _CustomerServicesScreenState extends State<CustomerServicesScreen> {
                             s['image'] as String,
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) => const Center(
-                              child: Icon(Icons.image_not_supported_outlined, color: Colors.black26),
+                              child: Icon(Icons.image_not_supported_outlined,
+                                  color: Colors.black26),
                             ),
                           )
                         : const Center(
-                            child: Icon(Icons.image_outlined, color: Colors.black26),
+                            child: Icon(Icons.image_outlined,
+                                color: Colors.black26),
                           ),
                   ),
                   Positioned(
                     top: 10,
                     left: 10,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: const Color(0xE6FFFFFF),
                         borderRadius: BorderRadius.circular(20),
@@ -273,7 +279,8 @@ class _CustomerServicesScreenState extends State<CustomerServicesScreen> {
                           const SizedBox(height: 6),
                           Row(
                             children: [
-                              const Icon(Icons.star_rounded, color: Colors.amber, size: 14),
+                              const Icon(Icons.star_rounded,
+                                  color: Colors.amber, size: 14),
                               const SizedBox(width: 4),
                               Text(
                                 s['rating'].toString(),
