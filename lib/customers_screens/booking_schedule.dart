@@ -342,11 +342,14 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
     var hour = int.tryParse(match.group(1) ?? '');
     final minute = int.tryParse(match.group(2) ?? '0');
     final ampm = match.group(3)?.toLowerCase();
-    if (hour == null || minute == null || minute < 0 || minute > 59)
+    if (hour == null || minute == null || minute < 0 || minute > 59) {
       return null;
+    }
 
     if (ampm != null) {
-      if (hour < 1 || hour > 12) return null;
+      if (hour < 1 || hour > 12) {
+        return null;
+      }
       if (ampm == 'am') {
         hour = hour == 12 ? 0 : hour;
       } else {
@@ -824,8 +827,10 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
   }
 
   Future<void> _processBooking() async {
-    if (_selectedTimeIndex == null || _selectedTimeIndex! >= _timeSlots.length)
+    if (_selectedTimeIndex == null ||
+        _selectedTimeIndex! >= _timeSlots.length) {
       return;
+    }
     if (_serviceId.isEmpty || _providerId.isEmpty || _dates.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Service information is incomplete.')),
@@ -851,7 +856,9 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
     }
 
     final selectedDate = _dates[_selectedDateIndex]['fullDate'] ?? '';
-    if (selectedDate.isEmpty) return;
+    if (selectedDate.isEmpty) {
+      return;
+    }
 
     final slotStartMinutes = selectedSlot['startMinutes'] as int;
     final slotEndMinutes = selectedSlot['endMinutes'] as int;

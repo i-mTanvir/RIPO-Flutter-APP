@@ -173,8 +173,9 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
   String _formatBookingDate(String bookingDate, String slot) {
     if (bookingDate.isEmpty && slot.isEmpty) return '';
     final dt = DateTime.tryParse(bookingDate);
-    if (dt == null)
+    if (dt == null) {
       return '$bookingDate ${slot.isEmpty ? '' : '- $slot'}'.trim();
+    }
     final months = [
       'Jan',
       'Feb',
@@ -302,7 +303,9 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
   }
 
   Widget _buildRequestsTab() {
-    if (_requestJobs.isEmpty) return _buildEmpty('No pending requests.');
+    if (_requestJobs.isEmpty) {
+      return _buildEmpty('No pending requests.');
+    }
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: _requestJobs.length,
@@ -347,7 +350,9 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
   }
 
   Widget _buildActiveTab() {
-    if (_activeJobs.isEmpty) return _buildEmpty('No active jobs.');
+    if (_activeJobs.isEmpty) {
+      return _buildEmpty('No active jobs.');
+    }
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: _activeJobs.length,
@@ -398,8 +403,9 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
   }
 
   Widget _buildCompletedTab() {
-    if (_completedJobs.isEmpty)
+    if (_completedJobs.isEmpty) {
       return _buildEmpty('No completed/rejected jobs yet.');
+    }
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: _completedJobs.length,
