@@ -21,15 +21,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         _buildHeader(),
         Expanded(
           child: _selectedNavIndex == 1 || _selectedNavIndex == 3
-            // Component screens (Users, Offers) have their own padding logic.
-            ? Padding(padding: const EdgeInsets.fromLTRB(14, 12, 14, 0), child: _buildActiveTabContent())
-            : _selectedNavIndex == 4
-              // Settings/Profile screen manages its own Column + Expanded structure.
-              ? _buildActiveTabContent()
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  child: _buildActiveTabContent(),
-                ),
+              // Component screens (Users, Offers) have their own padding logic.
+              ? Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+                  child: _buildActiveTabContent())
+              : _selectedNavIndex == 4
+                  // Settings/Profile screen manages its own Column + Expanded structure.
+                  ? _buildActiveTabContent()
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
+                      child: _buildActiveTabContent(),
+                    ),
         ),
       ],
     );
@@ -58,22 +61,38 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       children: [
         Row(
           children: [
-            Expanded(child: _buildStatCard('Total Revenue', '৳ 145K', Icons.account_balance_wallet_rounded, const Color(0xFF6950F4))),
+            Expanded(
+                child: _buildStatCard(
+                    'Total Revenue',
+                    '৳ 145K',
+                    Icons.account_balance_wallet_rounded,
+                    const Color(0xFF6950F4))),
             const SizedBox(width: 16),
-            Expanded(child: _buildStatCard('Active Jobs', '342', Icons.handyman_rounded, const Color(0xFF00BFA5))),
+            Expanded(
+                child: _buildStatCard('Active Jobs', '342',
+                    Icons.handyman_rounded, const Color(0xFF00BFA5))),
           ],
         ),
         const SizedBox(height: 16),
         Row(
           children: [
-            Expanded(child: _buildStatCard('Total Users', '12.4K', Icons.people_alt_rounded, const Color(0xFFFF9800))),
+            Expanded(
+                child: _buildStatCard('Total Users', '12.4K',
+                    Icons.people_alt_rounded, const Color(0xFFFF9800))),
             const SizedBox(width: 16),
-            Expanded(child: _buildStatCard('Providers', '850', Icons.storefront_rounded, const Color(0xFFE91E63))),
+            Expanded(
+                child: _buildStatCard('Providers', '850',
+                    Icons.storefront_rounded, const Color(0xFFE91E63))),
           ],
         ),
-        const SizedBox(height: 24),
-        const Text('Recent Activities', style: TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w800, color: Colors.black87)),
-        const SizedBox(height: 12),
+        const SizedBox(height: 20),
+        const Text('Recent Activities',
+            style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: Colors.black87)),
+        const SizedBox(height: 10),
         _buildActivityItem(
           icon: Icons.event_available_rounded,
           color: const Color(0xFF4CAF50),
@@ -144,12 +163,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               Container(
                 width: 32,
                 height: 32,
-                decoration: BoxDecoration(color: color.withValues(alpha: 0.12), shape: BoxShape.circle),
+                decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.12),
+                    shape: BoxShape.circle),
                 child: Icon(icon, color: color, size: 16),
               ),
               if (!isLast)
                 Expanded(
-                  child: Container(width: 1.5, color: Colors.black.withValues(alpha: 0.06)),
+                  child: Container(
+                      width: 1.5, color: Colors.black.withValues(alpha: 0.06)),
                 ),
             ],
           ),
@@ -157,13 +179,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           // Content
           Expanded(
             child: Padding(
-              padding: EdgeInsets.only(bottom: isLast ? 0 : 16),
+              padding: EdgeInsets.only(bottom: isLast ? 0 : 14),
               child: Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.fromLTRB(12, 9, 12, 9),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
-                  boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 6, offset: Offset(0, 3))],
+                  boxShadow: const [
+                    BoxShadow(
+                        color: Color(0x08000000),
+                        blurRadius: 6,
+                        offset: Offset(0, 3))
+                  ],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -172,19 +199,42 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Expanded(
-                          child: Text(title, style: const TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w700, color: Colors.black87)),
+                          child: Text(title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.black87)),
                         ),
-                        Text(time, style: const TextStyle(fontFamily: 'Inter', fontSize: 10, color: Colors.black38)),
+                        Text(time,
+                            style: const TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 10,
+                                color: Colors.black38)),
                       ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(subtitle, style: const TextStyle(fontFamily: 'Inter', fontSize: 11, color: Colors.black54)),
+                    const SizedBox(height: 2),
+                    Text(subtitle,
+                        style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 11,
+                            color: Colors.black54)),
                     if (hasBadge) ...[
                       const SizedBox(height: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(6)),
-                        child: Text(badgeLabel, style: TextStyle(fontFamily: 'Inter', fontSize: 9, fontWeight: FontWeight.w800, color: color)),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                            color: color.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(6)),
+                        child: Text(badgeLabel,
+                            style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 9,
+                                fontWeight: FontWeight.w800,
+                                color: color)),
                       ),
                     ],
                   ],
@@ -197,26 +247,41 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+      String title, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 4))],
+        boxShadow: const [
+          BoxShadow(
+              color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 4))
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(color: color.withValues(alpha: 0.1), shape: BoxShape.circle),
+            decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1), shape: BoxShape.circle),
             child: Icon(icon, color: color, size: 16),
           ),
           const SizedBox(height: 10),
-          Text(value, style: const TextStyle(fontFamily: 'Inter', fontSize: 18, fontWeight: FontWeight.w800, color: Colors.black87)),
+          Text(value,
+              style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.black87)),
           const SizedBox(height: 2),
-          Text(title, style: const TextStyle(fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.w600, color: Colors.black45)),
+          Text(title,
+              style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black45)),
         ],
       ),
     );
@@ -253,10 +318,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       color: Colors.white,
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 2),
-                      boxShadow: const [BoxShadow(color: Color(0x1F000000), blurRadius: 8, offset: Offset(0, 2))],
+                      boxShadow: const [
+                        BoxShadow(
+                            color: Color(0x1F000000),
+                            blurRadius: 8,
+                            offset: Offset(0, 2))
+                      ],
                     ),
                     child: const ClipOval(
-                      child: Icon(Icons.admin_panel_settings_rounded, color: Color(0xFF6950F4), size: 24),
+                      child: Icon(Icons.admin_panel_settings_rounded,
+                          color: Color(0xFF6950F4), size: 24),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -267,12 +338,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       Text(
                         'RIPO Admin',
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w800, color: Colors.black87),
+                        style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.black87),
                       ),
                       Text(
                         'Welcome back Admin',
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontFamily: 'Inter', fontSize: 10, fontWeight: FontWeight.w600, color: Colors.black54),
+                        style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black54),
                       ),
                     ],
                   ),
@@ -281,7 +360,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
               // Notification on Right side
               IconButton(
-                icon: const Icon(Icons.notifications_rounded, color: Colors.black87, size: 20),
+                icon: const Icon(Icons.notifications_rounded,
+                    color: Colors.black87, size: 20),
                 onPressed: () {},
                 style: IconButton.styleFrom(
                   backgroundColor: Colors.white.withValues(alpha: 0.3),
@@ -314,18 +394,26 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _buildNavItem(icon: Icons.dashboard_rounded, label: 'Overview', index: 0),
-            _buildNavItem(icon: Icons.people_alt_rounded, label: 'Users', index: 1),
-            _buildNavItem(icon: Icons.account_balance_wallet_rounded, label: 'Finances', index: 2),
-            _buildNavItem(icon: Icons.local_offer_rounded, label: 'Offers', index: 3),
-            _buildNavItem(icon: Icons.settings_rounded, label: 'Settings', index: 4),
+            _buildNavItem(
+                icon: Icons.dashboard_rounded, label: 'Overview', index: 0),
+            _buildNavItem(
+                icon: Icons.people_alt_rounded, label: 'Users', index: 1),
+            _buildNavItem(
+                icon: Icons.account_balance_wallet_rounded,
+                label: 'Finances',
+                index: 2),
+            _buildNavItem(
+                icon: Icons.local_offer_rounded, label: 'Offers', index: 3),
+            _buildNavItem(
+                icon: Icons.settings_rounded, label: 'Settings', index: 4),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildNavItem({required IconData icon, required String label, required int index}) {
+  Widget _buildNavItem(
+      {required IconData icon, required String label, required int index}) {
     final selected = _selectedNavIndex == index;
     return GestureDetector(
       onTap: () {

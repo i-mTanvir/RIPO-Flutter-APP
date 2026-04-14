@@ -38,7 +38,8 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
   }
 
   Future<void> _loadBookingDetails() async {
-    final bookingId = (widget.bookingData?['bookingId'] as String?)?.trim() ?? '';
+    final bookingId =
+        (widget.bookingData?['bookingId'] as String?)?.trim() ?? '';
     if (bookingId.isEmpty) {
       if (!mounted) return;
       setState(() => _isLoading = false);
@@ -47,9 +48,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
 
     final client = Supabase.instance.client;
     try {
-      final row = await client
-          .from('bookings')
-          .select('''
+      final row = await client.from('bookings').select('''
             id,
             booking_code,
             booking_date,
@@ -69,9 +68,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
             services(name),
             provider_profiles(owner_name, business_name),
             locations(address_line, area, city)
-          ''')
-          .eq('id', bookingId)
-          .maybeSingle();
+          ''').eq('id', bookingId).maybeSingle();
 
       if (row == null) {
         if (!mounted) return;
@@ -94,8 +91,12 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
       final customerId = row['customer_id'] as String?;
       final providerId = row['provider_id'] as String?;
       final profileIds = <String>{};
-      if (customerId != null && customerId.isNotEmpty) profileIds.add(customerId);
-      if (providerId != null && providerId.isNotEmpty) profileIds.add(providerId);
+      if (customerId != null && customerId.isNotEmpty) {
+        profileIds.add(customerId);
+      }
+      if (providerId != null && providerId.isNotEmpty) {
+        profileIds.add(providerId);
+      }
 
       final profileMap = <String, Map<String, dynamic>>{};
       if (profileIds.isNotEmpty) {
@@ -114,22 +115,29 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
       final locationMap = row['locations'] as Map<String, dynamic>?;
 
       final ownerName = (providerMap?['owner_name'] as String?)?.trim() ?? '';
-      final businessName = (providerMap?['business_name'] as String?)?.trim() ?? '';
+      final businessName =
+          (providerMap?['business_name'] as String?)?.trim() ?? '';
       final providerName = ownerName.isNotEmpty ? ownerName : businessName;
 
-      final addressLine = (locationMap?['address_line'] as String?)?.trim() ?? '';
+      final addressLine =
+          (locationMap?['address_line'] as String?)?.trim() ?? '';
       final area = (locationMap?['area'] as String?)?.trim() ?? '';
       final city = (locationMap?['city'] as String?)?.trim() ?? '';
-      final address = [addressLine, area, city].where((e) => e.isNotEmpty).join(', ');
+      final address =
+          [addressLine, area, city].where((e) => e.isNotEmpty).join(', ');
 
       final statusRaw = (row['booking_status'] as String?)?.trim() ?? 'pending';
-      final paymentStatusRaw = (row['payment_status'] as String?)?.trim() ?? 'unpaid';
-      final paymentMethodRaw = (row['payment_method'] as String?)?.trim() ?? 'offline';
-      final paymentChannelRaw = (row['payment_channel'] as String?)?.trim() ?? '';
+      final paymentStatusRaw =
+          (row['payment_status'] as String?)?.trim() ?? 'unpaid';
+      final paymentMethodRaw =
+          (row['payment_method'] as String?)?.trim() ?? 'offline';
+      final paymentChannelRaw =
+          (row['payment_channel'] as String?)?.trim() ?? '';
 
       _reviewId = existingReview?['id'] as String?;
       _selectedRating = (existingReview?['rating'] as num?)?.toInt() ?? 0;
-      _reviewController.text = (existingReview?['comment'] as String?)?.trim() ?? '';
+      _reviewController.text =
+          (existingReview?['comment'] as String?)?.trim() ?? '';
 
       final history = List<Map<String, dynamic>>.from(historyRows)
           .map((e) => (e['status'] as String?)?.trim() ?? '')
@@ -151,21 +159,36 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
           'paymentStatusRaw': paymentStatusRaw,
           'paymentStatus': _paymentStatusLabel(paymentStatusRaw),
           'paymentMethodRaw': paymentMethodRaw,
-          'paymentMethod': _paymentMethodLabel(paymentMethodRaw, paymentChannelRaw),
-          'paymentTransactionId': (row['payment_transaction_id'] as String?)?.trim() ?? '',
+          'paymentMethod':
+              _paymentMethodLabel(paymentMethodRaw, paymentChannelRaw),
+          'paymentTransactionId':
+              (row['payment_transaction_id'] as String?)?.trim() ?? '',
           'serviceId': row['service_id'] as String? ?? '',
           'providerId': providerId ?? '',
           'customerId': customerId ?? '',
           'serviceName': (serviceMap?['name'] as String?)?.trim() ?? '',
           'providerName': providerName,
-          'providerAvatarUrl': providerId == null ? '' : ((profileMap[providerId]?['avatar_url'] as String?)?.trim() ?? ''),
-          'customerName': customerId == null ? '' : ((profileMap[customerId]?['full_name'] as String?)?.trim() ?? ''),
-          'customerAvatarUrl': customerId == null ? '' : ((profileMap[customerId]?['avatar_url'] as String?)?.trim() ?? ''),
-          'date': _formatBookingDate((row['booking_date'] as String?)?.trim() ?? '', (row['time_slot_text'] as String?)?.trim() ?? ''),
+          'providerAvatarUrl': providerId == null
+              ? ''
+              : ((profileMap[providerId]?['avatar_url'] as String?)?.trim() ??
+                  ''),
+          'customerName': customerId == null
+              ? ''
+              : ((profileMap[customerId]?['full_name'] as String?)?.trim() ??
+                  ''),
+          'customerAvatarUrl': customerId == null
+              ? ''
+              : ((profileMap[customerId]?['avatar_url'] as String?)?.trim() ??
+                  ''),
+          'date': _formatBookingDate(
+              (row['booking_date'] as String?)?.trim() ?? '',
+              (row['time_slot_text'] as String?)?.trim() ?? ''),
           'address': address,
           'quantity': (row['quantity'] as num?)?.toInt() ?? 1,
-          'unitPrice': _formatMoney((row['unit_price'] as num?)?.toDouble() ?? 0),
-          'totalAmount': _formatMoney((row['total_amount'] as num?)?.toDouble() ?? 0),
+          'unitPrice':
+              _formatMoney((row['unit_price'] as num?)?.toDouble() ?? 0),
+          'totalAmount':
+              _formatMoney((row['total_amount'] as num?)?.toDouble() ?? 0),
         };
         _isLoading = false;
       });
@@ -226,10 +249,27 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
       'BDT ${value % 1 == 0 ? value.toStringAsFixed(0) : value.toStringAsFixed(2)}';
 
   String _formatBookingDate(String bookingDate, String timeSlot) {
-    if (bookingDate.isEmpty && timeSlot.isEmpty) return '';
+    if (bookingDate.isEmpty && timeSlot.isEmpty) {
+      return '';
+    }
     final dt = DateTime.tryParse(bookingDate);
-    if (dt == null) return '$bookingDate ${timeSlot.isEmpty ? '' : '- $timeSlot'}'.trim();
-    final monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    if (dt == null) {
+      return '$bookingDate ${timeSlot.isEmpty ? '' : '- $timeSlot'}'.trim();
+    }
+    final monthNames = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
     final dateText = '${dt.day} ${monthNames[dt.month - 1]} ${dt.year}';
     return timeSlot.isEmpty ? dateText : '$dateText - $timeSlot';
   }
@@ -261,7 +301,8 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
         'payment_method': paymentMethod,
         'payment_status': paymentStatus,
         'payment_channel': paymentChannel.isEmpty ? null : paymentChannel,
-        'payment_transaction_id': (transactionId ?? '').isEmpty ? null : transactionId,
+        'payment_transaction_id':
+            (transactionId ?? '').isEmpty ? null : transactionId,
         'updated_at': DateTime.now().toIso8601String(),
       }).eq('id', bookingId);
 
@@ -294,33 +335,47 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
       builder: (ctx) => AlertDialog(
         title: const Text('Select Payment Method'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          OutlinedButton(onPressed: () => Navigator.pop(ctx, 'offline'), child: const Text('Pay Offline')),
-          ElevatedButton(onPressed: () => Navigator.pop(ctx, 'online'), child: const Text('Pay Online')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          OutlinedButton(
+              onPressed: () => Navigator.pop(ctx, 'offline'),
+              child: const Text('Pay Offline')),
+          ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, 'online'),
+              child: const Text('Pay Online')),
         ],
       ),
     );
 
     if (choice == 'offline') {
+      if (!mounted) return;
       final confirm = await showDialog<bool>(
             context: context,
             builder: (ctx) => AlertDialog(
               title: const Text('Confirm Offline Payment'),
               content: const Text('Are you confirming you paid offline?'),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No')),
-                ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Confirm')),
+                TextButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: const Text('No')),
+                ElevatedButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    child: const Text('Confirm')),
               ],
             ),
           ) ??
           false;
       if (confirm) {
-        await _updatePayment(paymentMethod: 'offline', paymentStatus: 'paid', paymentChannel: 'offline');
+        await _updatePayment(
+            paymentMethod: 'offline',
+            paymentStatus: 'paid',
+            paymentChannel: 'offline');
       }
       return;
     }
 
     if (choice == 'online') {
+      if (!mounted) return;
       final pinController = TextEditingController();
       final pay = await showDialog<bool>(
             context: context,
@@ -334,12 +389,17 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                 decoration: const InputDecoration(labelText: 'Enter bKash PIN'),
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-                ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Pay')),
+                TextButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: const Text('Cancel')),
+                ElevatedButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    child: const Text('Pay')),
               ],
             ),
           ) ??
           false;
+      if (!mounted) return;
 
       final pin = pinController.text.trim();
       pinController.dispose();
@@ -347,13 +407,15 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
       if (pin.length != 5) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Invalid bKash PIN. Must be 5 digits.')),
+            const SnackBar(
+                content: Text('Invalid bKash PIN. Must be 5 digits.')),
           );
         }
         return;
       }
 
-      final txnId = 'BKX-${DateTime.now().millisecondsSinceEpoch}-${Random().nextInt(900000) + 100000}';
+      final txnId =
+          'BKX-${DateTime.now().millisecondsSinceEpoch}-${Random().nextInt(900000) + 100000}';
       await _updatePayment(
         paymentMethod: 'online',
         paymentStatus: 'paid',
@@ -371,10 +433,16 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
     final providerId = (_details['providerId'] as String?) ?? '';
     final customerId = (_details['customerId'] as String?) ?? '';
 
-    if (bookingId.isEmpty || serviceId.isEmpty || providerId.isEmpty || customerId.isEmpty) return;
+    if (bookingId.isEmpty ||
+        serviceId.isEmpty ||
+        providerId.isEmpty ||
+        customerId.isEmpty) {
+      return;
+    }
     if (_selectedRating < 1 || _selectedRating > 5) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a rating between 1 and 5.')),
+        const SnackBar(
+            content: Text('Please select a rating between 1 and 5.')),
       );
       return;
     }
@@ -387,19 +455,23 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
         'provider_id': providerId,
         'service_id': serviceId,
         'rating': _selectedRating,
-        'comment': _reviewController.text.trim().isEmpty ? null : _reviewController.text.trim(),
+        'comment': _reviewController.text.trim().isEmpty
+            ? null
+            : _reviewController.text.trim(),
       };
 
       final client = Supabase.instance.client;
       if (_reviewId == null) {
-        final inserted = await client.from('reviews').insert(payload).select('id').single();
+        final inserted =
+            await client.from('reviews').insert(payload).select('id').single();
         _reviewId = inserted['id'] as String?;
       } else {
         await client.from('reviews').update(payload).eq('id', _reviewId!);
       }
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Review submitted.')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Review submitted.')));
       await _loadBookingDetails();
     } catch (_) {
       if (!mounted) return;
@@ -453,7 +525,11 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Booking Details', style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600, color: Colors.black)),
+        title: const Text('Booking Details',
+            style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w600,
+                color: Colors.black)),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -469,22 +545,39 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Expanded(child: Text('Booking ID: ${_details['id'] ?? ''}', style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700))),
+                            Expanded(
+                                child: Text(
+                                    'Booking ID: ${_details['id'] ?? ''}',
+                                    style: const TextStyle(
+                                        fontFamily: 'Inter',
+                                        fontWeight: FontWeight.w700))),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                              decoration: BoxDecoration(color: _statusBg(status), borderRadius: BorderRadius.circular(8)),
-                              child: Text(status, style: TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w700, color: _statusText(status))),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                  color: _statusBg(status),
+                                  borderRadius: BorderRadius.circular(8)),
+                              child: Text(status,
+                                  style: TextStyle(
+                                      fontFamily: 'Inter',
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: _statusText(status))),
                             ),
                           ],
                         ),
                         const SizedBox(height: 8),
-                        Text(_details['date'] as String? ?? '', style: const TextStyle(fontFamily: 'Inter', color: Colors.black54)),
+                        Text(_details['date'] as String? ?? '',
+                            style: const TextStyle(
+                                fontFamily: 'Inter', color: Colors.black54)),
                         const SizedBox(height: 10),
                         _progress(),
                         const SizedBox(height: 12),
-                        _summaryRow('Address', _details['address'] as String? ?? ''),
+                        _summaryRow(
+                            'Address', _details['address'] as String? ?? ''),
                         const SizedBox(height: 8),
-                        _summaryRow('Total', _details['totalAmount'] as String? ?? ''),
+                        _summaryRow(
+                            'Total', _details['totalAmount'] as String? ?? ''),
                       ],
                     ),
                   ),
@@ -495,16 +588,26 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                         CircleAvatar(
                           radius: 24,
                           backgroundColor: const Color(0xFFE8F4FD),
-                          backgroundImage: providerAvatarUrl.isEmpty ? null : NetworkImage(providerAvatarUrl),
-                          child: providerAvatarUrl.isEmpty ? const Icon(Icons.person, color: Colors.black54) : null,
+                          backgroundImage: providerAvatarUrl.isEmpty
+                              ? null
+                              : NetworkImage(providerAvatarUrl),
+                          child: providerAvatarUrl.isEmpty
+                              ? const Icon(Icons.person, color: Colors.black54)
+                              : null,
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('Service Provider', style: TextStyle(fontFamily: 'Inter', color: Colors.black54)),
-                              Text(_details['providerName'] as String? ?? '', style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700)),
+                              const Text('Service Provider',
+                                  style: TextStyle(
+                                      fontFamily: 'Inter',
+                                      color: Colors.black54)),
+                              Text(_details['providerName'] as String? ?? '',
+                                  style: const TextStyle(
+                                      fontFamily: 'Inter',
+                                      fontWeight: FontWeight.w700)),
                             ],
                           ),
                         ),
@@ -516,23 +619,36 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Payment', style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700)),
+                        const Text('Payment',
+                            style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontWeight: FontWeight.w700)),
                         const SizedBox(height: 8),
-                        _summaryRow('Method', _details['paymentMethod'] as String? ?? 'Offline'),
+                        _summaryRow('Method',
+                            _details['paymentMethod'] as String? ?? 'Offline'),
                         const SizedBox(height: 6),
-                        _summaryRow('Status', _details['paymentStatus'] as String? ?? 'Unpaid'),
-                        if (((_details['paymentTransactionId'] as String?) ?? '').isNotEmpty) ...[
+                        _summaryRow('Status',
+                            _details['paymentStatus'] as String? ?? 'Unpaid'),
+                        if (((_details['paymentTransactionId'] as String?) ??
+                                '')
+                            .isNotEmpty) ...[
                           const SizedBox(height: 6),
-                          _summaryRow('Txn ID', _details['paymentTransactionId'] as String),
+                          _summaryRow('Txn ID',
+                              _details['paymentTransactionId'] as String),
                         ],
                         if (_canPay) ...[
                           const SizedBox(height: 10),
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
-                              onPressed: _isProcessingPayment ? null : _showPaymentOptionsDialog,
-                              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6950F4)),
-                              child: Text(_isProcessingPayment ? 'Processing...' : 'Pay Now'),
+                              onPressed: _isProcessingPayment
+                                  ? null
+                                  : _showPaymentOptionsDialog,
+                              style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF6950F4)),
+                              child: Text(_isProcessingPayment
+                                  ? 'Processing...'
+                                  : 'Pay Now'),
                             ),
                           ),
                         ],
@@ -544,24 +660,40 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Service Summary', style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700)),
+                        const Text('Service Summary',
+                            style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontWeight: FontWeight.w700)),
                         const SizedBox(height: 8),
-                        Text(_details['serviceName'] as String? ?? '', style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700)),
+                        Text(_details['serviceName'] as String? ?? '',
+                            style: const TextStyle(
+                                fontFamily: 'Inter',
+                                fontWeight: FontWeight.w700)),
                         const SizedBox(height: 6),
                         _summaryRow('Qty', '${_details['quantity'] ?? 1}'),
                         const SizedBox(height: 6),
-                        _summaryRow('Unit Price', _details['unitPrice'] as String? ?? ''),
+                        _summaryRow('Unit Price',
+                            _details['unitPrice'] as String? ?? ''),
                         const SizedBox(height: 10),
                         Row(
                           children: [
                             CircleAvatar(
                               radius: 14,
                               backgroundColor: const Color(0xFFE8F4FD),
-                              backgroundImage: customerAvatarUrl.isEmpty ? null : NetworkImage(customerAvatarUrl),
-                              child: customerAvatarUrl.isEmpty ? const Icon(Icons.person, size: 16, color: Colors.black54) : null,
+                              backgroundImage: customerAvatarUrl.isEmpty
+                                  ? null
+                                  : NetworkImage(customerAvatarUrl),
+                              child: customerAvatarUrl.isEmpty
+                                  ? const Icon(Icons.person,
+                                      size: 16, color: Colors.black54)
+                                  : null,
                             ),
                             const SizedBox(width: 8),
-                            Expanded(child: Text(_details['customerName'] as String? ?? '', style: const TextStyle(fontFamily: 'Inter'))),
+                            Expanded(
+                                child: Text(
+                                    _details['customerName'] as String? ?? '',
+                                    style:
+                                        const TextStyle(fontFamily: 'Inter'))),
                           ],
                         )
                       ],
@@ -573,14 +705,26 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(_reviewId == null ? 'Write Review' : 'Your Review', style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700)),
+                          Text(
+                              _reviewId == null
+                                  ? 'Write Review'
+                                  : 'Your Review',
+                              style: const TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontWeight: FontWeight.w700)),
                           const SizedBox(height: 8),
                           Row(
                             children: List.generate(5, (i) {
                               final v = i + 1;
                               return IconButton(
-                                onPressed: _canReview ? () => setState(() => _selectedRating = v) : null,
-                                icon: Icon(v <= _selectedRating ? Icons.star_rounded : Icons.star_border_rounded, color: const Color(0xFFFFB300)),
+                                onPressed: _canReview
+                                    ? () => setState(() => _selectedRating = v)
+                                    : null,
+                                icon: Icon(
+                                    v <= _selectedRating
+                                        ? Icons.star_rounded
+                                        : Icons.star_border_rounded,
+                                    color: const Color(0xFFFFB300)),
                               );
                             }),
                           ),
@@ -588,15 +732,24 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                             controller: _reviewController,
                             enabled: _canReview,
                             maxLines: 3,
-                            decoration: const InputDecoration(hintText: 'Write your comment', border: OutlineInputBorder()),
+                            decoration: const InputDecoration(
+                                hintText: 'Write your comment',
+                                border: OutlineInputBorder()),
                           ),
                           const SizedBox(height: 10),
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
-                              onPressed: (_canReview && !_isSubmittingReview) ? _submitReview : null,
-                              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6950F4)),
-                              child: Text(_isSubmittingReview ? 'Submitting...' : (_reviewId == null ? 'Send Review' : 'Update Review')),
+                              onPressed: (_canReview && !_isSubmittingReview)
+                                  ? _submitReview
+                                  : null,
+                              style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF6950F4)),
+                              child: Text(_isSubmittingReview
+                                  ? 'Submitting...'
+                                  : (_reviewId == null
+                                      ? 'Send Review'
+                                      : 'Update Review')),
                             ),
                           )
                         ],
@@ -614,7 +767,10 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 2))],
+          boxShadow: const [
+            BoxShadow(
+                color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 2))
+          ],
         ),
         child: child,
       );
@@ -622,8 +778,15 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
   Widget _summaryRow(String label, String value) => Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 90, child: Text('$label:', style: const TextStyle(fontFamily: 'Inter', color: Colors.black45))),
-          Expanded(child: Text(value, style: const TextStyle(fontFamily: 'Inter', color: Colors.black87))),
+          SizedBox(
+              width: 90,
+              child: Text('$label:',
+                  style: const TextStyle(
+                      fontFamily: 'Inter', color: Colors.black45))),
+          Expanded(
+              child: Text(value,
+                  style: const TextStyle(
+                      fontFamily: 'Inter', color: Colors.black87))),
         ],
       );
 
@@ -636,7 +799,8 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
           Expanded(child: Container(height: 1, color: Colors.black12)),
           _step('Completed', _isStepDone('completed')),
           Expanded(child: Container(height: 1, color: Colors.black12)),
-          _step('Rejected', _isStepDone('rejected') || _isStepDone('cancelled')),
+          _step(
+              'Rejected', _isStepDone('rejected') || _isStepDone('cancelled')),
         ],
       );
 
@@ -644,11 +808,17 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
         children: [
           CircleAvatar(
             radius: 10,
-            backgroundColor: done ? const Color(0xFF6950F4) : const Color(0xFFF0F0F0),
-            child: Icon(Icons.check, size: 12, color: done ? Colors.white : Colors.black38),
+            backgroundColor:
+                done ? const Color(0xFF6950F4) : const Color(0xFFF0F0F0),
+            child: Icon(Icons.check,
+                size: 12, color: done ? Colors.white : Colors.black38),
           ),
           const SizedBox(height: 4),
-          Text(label, style: TextStyle(fontFamily: 'Inter', fontSize: 10, color: done ? const Color(0xFF6950F4) : Colors.black38)),
+          Text(label,
+              style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 10,
+                  color: done ? const Color(0xFF6950F4) : Colors.black38)),
         ],
       );
 }

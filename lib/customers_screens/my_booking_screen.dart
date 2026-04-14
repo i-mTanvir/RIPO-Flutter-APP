@@ -59,9 +59,7 @@ class _MyBookingScreenState extends State<MyBookingScreen> {
     }
 
     try {
-      final rows = await client
-          .from('bookings')
-          .select('''
+      final rows = await client.from('bookings').select('''
             id,
             booking_code,
             booking_date,
@@ -78,26 +76,29 @@ class _MyBookingScreenState extends State<MyBookingScreen> {
             customer_id,
             services(name),
             provider_profiles(owner_name, business_name)
-          ''')
-          .eq('customer_id', userId)
-          .order('created_at', ascending: false);
+          ''').eq('customer_id', userId).order('created_at', ascending: false);
 
       final mapped = List<Map<String, dynamic>>.from(rows).map((row) {
         final serviceMap = row['services'] as Map<String, dynamic>?;
         final providerMap = row['provider_profiles'] as Map<String, dynamic>?;
         final serviceName = (serviceMap?['name'] as String?)?.trim() ?? '';
         final ownerName = (providerMap?['owner_name'] as String?)?.trim() ?? '';
-        final businessName = (providerMap?['business_name'] as String?)?.trim() ?? '';
+        final businessName =
+            (providerMap?['business_name'] as String?)?.trim() ?? '';
         final providerName = ownerName.isNotEmpty ? ownerName : businessName;
 
         final amount = (row['total_amount'] as num?)?.toDouble() ?? 0;
         final bookingDate = (row['booking_date'] as String?)?.trim() ?? '';
         final timeSlot = (row['time_slot_text'] as String?)?.trim() ?? '';
         final prettyDate = _formatBookingDate(bookingDate, timeSlot);
-        final statusLabel = _statusLabel((row['booking_status'] as String?)?.trim() ?? '');
-        final paymentStatusRaw = (row['payment_status'] as String?)?.trim() ?? 'unpaid';
-        final paymentMethodRaw = (row['payment_method'] as String?)?.trim() ?? 'offline';
-        final paymentChannelRaw = (row['payment_channel'] as String?)?.trim() ?? '';
+        final statusLabel =
+            _statusLabel((row['booking_status'] as String?)?.trim() ?? '');
+        final paymentStatusRaw =
+            (row['payment_status'] as String?)?.trim() ?? 'unpaid';
+        final paymentMethodRaw =
+            (row['payment_method'] as String?)?.trim() ?? 'offline';
+        final paymentChannelRaw =
+            (row['payment_channel'] as String?)?.trim() ?? '';
 
         return <String, dynamic>{
           'id': (row['booking_code'] as String?)?.trim().isNotEmpty == true
@@ -110,8 +111,10 @@ class _MyBookingScreenState extends State<MyBookingScreen> {
           'statusRaw': (row['booking_status'] as String?)?.trim() ?? 'pending',
           'paymentStatusRaw': paymentStatusRaw,
           'paymentStatus': _paymentStatusLabel(paymentStatusRaw),
-          'paymentMethod': _paymentMethodLabel(paymentMethodRaw, paymentChannelRaw),
-          'paymentTransactionId': (row['payment_transaction_id'] as String?)?.trim() ?? '',
+          'paymentMethod':
+              _paymentMethodLabel(paymentMethodRaw, paymentChannelRaw),
+          'paymentTransactionId':
+              (row['payment_transaction_id'] as String?)?.trim() ?? '',
           'serviceName': serviceName,
           'providerName': providerName,
           'price': 'BDT ${amount.toStringAsFixed(amount % 1 == 0 ? 0 : 2)}',
@@ -202,10 +205,12 @@ class _MyBookingScreenState extends State<MyBookingScreen> {
   }
 
   bool _canPay(Map<String, dynamic> booking) =>
-      booking['statusRaw'] == 'completed' && booking['paymentStatusRaw'] != 'paid';
+      booking['statusRaw'] == 'completed' &&
+      booking['paymentStatusRaw'] != 'paid';
 
   bool _canReview(Map<String, dynamic> booking) =>
-      booking['statusRaw'] == 'completed' && booking['paymentStatusRaw'] == 'paid';
+      booking['statusRaw'] == 'completed' &&
+      booking['paymentStatusRaw'] == 'paid';
 
   Future<void> _showPaymentDialog(Map<String, dynamic> booking) async {
     final bookingId = booking['bookingId'] as String;
@@ -216,16 +221,26 @@ class _MyBookingScreenState extends State<MyBookingScreen> {
       builder: (ctx) => AlertDialog(
         title: const Text('Select Payment Method'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          OutlinedButton(onPressed: () => Navigator.pop(ctx, 'offline'), child: const Text('Pay Offline')),
-          ElevatedButton(onPressed: () => Navigator.pop(ctx, 'online'), child: const Text('Pay Online')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          OutlinedButton(
+              onPressed: () => Navigator.pop(ctx, 'offline'),
+              child: const Text('Pay Offline')),
+          ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, 'online'),
+              child: const Text('Pay Online')),
         ],
       ),
     );
 
     if (choice == 'offline') {
-      await _updatePayment(bookingId: bookingId, method: 'offline', channel: 'offline', txnId: '');
+      await _updatePayment(
+          bookingId: bookingId,
+          method: 'offline',
+          channel: 'offline',
+          txnId: '');
     } else if (choice == 'online') {
+      if (!mounted) return;
       final pinController = TextEditingController();
       final pay = await showDialog<bool>(
             context: context,
@@ -238,12 +253,17 @@ class _MyBookingScreenState extends State<MyBookingScreen> {
                 keyboardType: TextInputType.number,
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-                ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Pay')),
+                TextButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: const Text('Cancel')),
+                ElevatedButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    child: const Text('Pay')),
               ],
             ),
           ) ??
           false;
+      if (!mounted) return;
       final pin = pinController.text.trim();
       pinController.dispose();
       if (!pay) return;
@@ -256,7 +276,11 @@ class _MyBookingScreenState extends State<MyBookingScreen> {
         return;
       }
       final txnId = 'BKX-${DateTime.now().millisecondsSinceEpoch}';
-      await _updatePayment(bookingId: bookingId, method: 'online', channel: 'bkash', txnId: txnId);
+      await _updatePayment(
+          bookingId: bookingId,
+          method: 'online',
+          channel: 'bkash',
+          txnId: txnId);
     }
   }
 
@@ -277,7 +301,10 @@ class _MyBookingScreenState extends State<MyBookingScreen> {
       }).eq('id', bookingId);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(txnId.isEmpty ? 'Payment confirmed.' : 'Payment successful. Txn: $txnId')),
+        SnackBar(
+            content: Text(txnId.isEmpty
+                ? 'Payment confirmed.'
+                : 'Payment successful. Txn: $txnId')),
       );
       await _loadBookings();
     } catch (_) {
@@ -304,7 +331,8 @@ class _MyBookingScreenState extends State<MyBookingScreen> {
 
     if (rating < 1 || rating > 5) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a rating between 1 and 5.')),
+        const SnackBar(
+            content: Text('Please select a rating between 1 and 5.')),
       );
       return;
     }
@@ -322,10 +350,17 @@ class _MyBookingScreenState extends State<MyBookingScreen> {
       };
       final client = Supabase.instance.client;
       if (existingReview == null) {
-        final inserted = await client.from('reviews').insert(payload).select('id, booking_id, rating, comment').single();
+        final inserted = await client
+            .from('reviews')
+            .insert(payload)
+            .select('id, booking_id, rating, comment')
+            .single();
         _reviewsByBooking[bookingId] = inserted;
       } else {
-        await client.from('reviews').update(payload).eq('id', existingReview['id']);
+        await client
+            .from('reviews')
+            .update(payload)
+            .eq('id', existingReview['id']);
         _reviewsByBooking[bookingId] = {
           ...existingReview,
           'rating': rating,
@@ -333,7 +368,8 @@ class _MyBookingScreenState extends State<MyBookingScreen> {
         };
       }
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Review submitted.')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Review submitted.')));
       setState(() {});
     } catch (_) {
       if (!mounted) return;
@@ -433,7 +469,8 @@ class _MyBookingScreenState extends State<MyBookingScreen> {
               : RefreshIndicator(
                   onRefresh: _loadBookings,
                   child: ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 20),
                     itemCount: _bookings.length,
                     itemBuilder: (context, index) {
                       final booking = _bookings[index];
@@ -444,7 +481,8 @@ class _MyBookingScreenState extends State<MyBookingScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => BookingDetailsScreen(bookingData: booking),
+                              builder: (context) =>
+                                  BookingDetailsScreen(bookingData: booking),
                             ),
                           ).then((_) => _loadBookings());
                         },
@@ -454,13 +492,15 @@ class _MyBookingScreenState extends State<MyBookingScreen> {
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: const Color(0xFFE0E0E0), width: 1.2),
+                            border: Border.all(
+                                color: const Color(0xFFE0E0E0), width: 1.2),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Expanded(
                                     child: Text(
@@ -477,10 +517,11 @@ class _MyBookingScreenState extends State<MyBookingScreen> {
                                   ),
                                   const SizedBox(width: 10),
                                   Container(
-                                    padding:
-                                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 6),
                                     decoration: BoxDecoration(
-                                      color: _bgColors[status] ?? const Color(0xFFF0F0F0),
+                                      color: _bgColors[status] ??
+                                          const Color(0xFFF0F0F0),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Text(
@@ -489,7 +530,8 @@ class _MyBookingScreenState extends State<MyBookingScreen> {
                                         fontFamily: 'Inter',
                                         fontSize: 13,
                                         fontWeight: FontWeight.w600,
-                                        color: _textColors[status] ?? Colors.black54,
+                                        color: _textColors[status] ??
+                                            Colors.black54,
                                       ),
                                     ),
                                   ),
@@ -545,7 +587,10 @@ class _MyBookingScreenState extends State<MyBookingScreen> {
                                   color: Colors.black45,
                                 ),
                               ),
-                              if (((booking['paymentTransactionId'] as String?) ?? '').isNotEmpty) ...[
+                              if (((booking['paymentTransactionId']
+                                          as String?) ??
+                                      '')
+                                  .isNotEmpty) ...[
                                 const SizedBox(height: 4),
                                 Text(
                                   'Txn ID: ${booking['paymentTransactionId']}',
@@ -561,35 +606,44 @@ class _MyBookingScreenState extends State<MyBookingScreen> {
                                 SizedBox(
                                   width: double.infinity,
                                   child: ElevatedButton(
-                                    onPressed: _processingPaymentFor.contains(booking['bookingId'])
+                                    onPressed: _processingPaymentFor
+                                            .contains(booking['bookingId'])
                                         ? null
                                         : () => _showPaymentDialog(booking),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: const Color(0xFF6950F4),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(8)),
                                     ),
                                     child: Text(
-                                      _processingPaymentFor.contains(booking['bookingId'])
+                                      _processingPaymentFor
+                                              .contains(booking['bookingId'])
                                           ? 'Processing...'
                                           : 'Pay Now',
                                     ),
                                   ),
                                 ),
                               ],
-                              if (_canReview(booking) || _reviewsByBooking.containsKey(booking['bookingId'])) ...[
+                              if (_canReview(booking) ||
+                                  _reviewsByBooking
+                                      .containsKey(booking['bookingId'])) ...[
                                 const SizedBox(height: 12),
                                 Container(
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
                                     color: const Color(0xFFF9F9FB),
                                     borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(color: const Color(0xFFE0E0E0)),
+                                    border: Border.all(
+                                        color: const Color(0xFFE0E0E0)),
                                   ),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        _reviewsByBooking.containsKey(booking['bookingId'])
+                                        _reviewsByBooking.containsKey(
+                                                booking['bookingId'])
                                             ? 'Your Review'
                                             : 'Write Review',
                                         style: const TextStyle(
@@ -603,28 +657,44 @@ class _MyBookingScreenState extends State<MyBookingScreen> {
                                       Row(
                                         children: List.generate(5, (i) {
                                           final value = i + 1;
-                                          final selected = (_draftRatings[booking['bookingId']] ??
-                                                  ((_reviewsByBooking[booking['bookingId']]?['rating'] as num?)?.toInt() ?? 0)) >=
+                                          final selected = (_draftRatings[
+                                                      booking['bookingId']] ??
+                                                  ((_reviewsByBooking[booking[
+                                                                  'bookingId']]
+                                                              ?[
+                                                              'rating'] as num?)
+                                                          ?.toInt() ??
+                                                      0)) >=
                                               value;
                                           return IconButton(
                                             padding: EdgeInsets.zero,
-                                            constraints: const BoxConstraints(minWidth: 30),
+                                            constraints: const BoxConstraints(
+                                                minWidth: 30),
                                             onPressed: _canReview(booking)
-                                                ? () => setState(() => _draftRatings[booking['bookingId']] = value)
+                                                ? () => setState(() =>
+                                                    _draftRatings[booking[
+                                                        'bookingId']] = value)
                                                 : null,
                                             icon: Icon(
-                                              selected ? Icons.star_rounded : Icons.star_border_rounded,
+                                              selected
+                                                  ? Icons.star_rounded
+                                                  : Icons.star_border_rounded,
                                               color: const Color(0xFFFFB300),
                                             ),
                                           );
                                         }),
                                       ),
                                       TextFormField(
-                                        initialValue: _draftComments[booking['bookingId']] ??
-                                            ((_reviewsByBooking[booking['bookingId']]?['comment'] as String?) ?? ''),
+                                        initialValue: _draftComments[
+                                                booking['bookingId']] ??
+                                            ((_reviewsByBooking[
+                                                        booking['bookingId']]
+                                                    ?['comment'] as String?) ??
+                                                ''),
                                         enabled: _canReview(booking),
                                         maxLines: 2,
-                                        onChanged: (v) => _draftComments[booking['bookingId']] = v,
+                                        onChanged: (v) => _draftComments[
+                                            booking['bookingId']] = v,
                                         decoration: const InputDecoration(
                                           hintText: 'Write comment...',
                                           border: OutlineInputBorder(),
@@ -636,19 +706,26 @@ class _MyBookingScreenState extends State<MyBookingScreen> {
                                         width: double.infinity,
                                         child: ElevatedButton(
                                           onPressed: (_canReview(booking) &&
-                                                  !_submittingReviewFor.contains(booking['bookingId']))
+                                                  !_submittingReviewFor
+                                                      .contains(
+                                                          booking['bookingId']))
                                               ? () => _submitReview(booking)
                                               : null,
                                           style: ElevatedButton.styleFrom(
-                                            backgroundColor: const Color(0xFF6950F4),
+                                            backgroundColor:
+                                                const Color(0xFF6950F4),
                                             shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(8),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
                                             ),
                                           ),
                                           child: Text(
-                                            _submittingReviewFor.contains(booking['bookingId'])
+                                            _submittingReviewFor.contains(
+                                                    booking['bookingId'])
                                                 ? 'Submitting...'
-                                                : (_reviewsByBooking.containsKey(booking['bookingId'])
+                                                : (_reviewsByBooking
+                                                        .containsKey(booking[
+                                                            'bookingId'])
                                                     ? 'Update Review'
                                                     : 'Send Review'),
                                           ),
