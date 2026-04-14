@@ -16,6 +16,7 @@ class CustomerProfileScreen extends StatefulWidget {
 class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
   String _userFullName = 'Loading...';
   String _userEmail = 'Loading...';
+  String _avatarUrl = '';
 
   final List<Map<String, dynamic>> _generalItems = [
     {'icon': Icons.person, 'label': 'My Profile'},
@@ -54,7 +55,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
     try {
       final profile = await client
           .from('profiles')
-          .select('full_name, email')
+          .select('full_name, email, avatar_url')
           .eq('id', userId)
           .maybeSingle();
 
@@ -64,11 +65,13 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
         setState(() {
           _userFullName = (profile['full_name'] as String?)?.trim() ?? 'User';
           _userEmail = (profile['email'] as String?)?.trim() ?? '';
+          _avatarUrl = (profile['avatar_url'] as String?)?.trim() ?? '';
         });
       } else {
         setState(() {
           _userFullName = 'User';
           _userEmail = '';
+          _avatarUrl = '';
         });
       }
     } catch (e) {
@@ -76,6 +79,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
         setState(() {
           _userFullName = 'User';
           _userEmail = '';
+          _avatarUrl = '';
         });
       }
     }
@@ -111,6 +115,8 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
   }
 
   Widget _buildHeader() {
+    final ImageProvider? avatarProvider =
+        _avatarUrl.isEmpty ? null : NetworkImage(_avatarUrl);
     return Container(
       color: Colors.white,
       padding:
@@ -124,8 +130,16 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
               shape: BoxShape.circle,
               border: Border.all(color: Colors.black87, width: 2),
               color: const Color(0xFFE8F4FD),
+              image: avatarProvider == null
+                  ? null
+                  : DecorationImage(
+                      image: avatarProvider,
+                      fit: BoxFit.cover,
+                    ),
             ),
-            child: const Icon(Icons.person, size: 40, color: Colors.black54),
+            child: avatarProvider == null
+                ? const Icon(Icons.person, size: 40, color: Colors.black54)
+                : null,
           ),
           const SizedBox(width: 16),
           Column(
@@ -207,7 +221,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                       MaterialPageRoute(
                         builder: (_) => const EditProfileScreen(),
                       ),
-                    );
+                    ).then((_) => _loadProfileData());
                   } else if (item['label'] == 'Message') {
                     Navigator.push(
                       context,

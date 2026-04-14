@@ -14,7 +14,8 @@ class ProviderDashboardScreen extends StatefulWidget {
   const ProviderDashboardScreen({super.key});
 
   @override
-  State<ProviderDashboardScreen> createState() => _ProviderDashboardScreenState();
+  State<ProviderDashboardScreen> createState() =>
+      _ProviderDashboardScreenState();
 }
 
 class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
@@ -49,7 +50,11 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
             .select('owner_name, business_name')
             .eq('user_id', userId)
             .maybeSingle(),
-        client.from('profiles').select('avatar_url').eq('id', userId).maybeSingle(),
+        client
+            .from('profiles')
+            .select('avatar_url')
+            .eq('id', userId)
+            .maybeSingle(),
       ]);
 
       if (!mounted) return;
@@ -117,22 +122,29 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
           .toList();
 
       final customerNameById = <String, String>{};
+      final customerAvatarById = <String, String>{};
       if (customerIds.isNotEmpty) {
         final profileRows = await client
             .from('profiles')
-            .select('id, full_name')
+            .select('id, full_name, avatar_url')
             .inFilter('id', customerIds);
         for (final row in List<Map<String, dynamic>>.from(profileRows)) {
           final id = row['id'] as String?;
           final name = (row['full_name'] as String?)?.trim() ?? '';
+          final avatarUrl = (row['avatar_url'] as String?)?.trim() ?? '';
           if (id != null) {
             customerNameById[id] = name;
+            customerAvatarById[id] = avatarUrl;
           }
         }
       }
 
-      final pending = bookings.where((e) => (e['booking_status'] as String?) == 'pending').toList();
-      final completed = bookings.where((e) => (e['booking_status'] as String?) == 'completed').length;
+      final pending = bookings
+          .where((e) => (e['booking_status'] as String?) == 'pending')
+          .toList();
+      final completed = bookings
+          .where((e) => (e['booking_status'] as String?) == 'completed')
+          .length;
 
       final recentPending = pending.take(2).map((row) {
         final serviceMap = row['services'] as Map<String, dynamic>?;
@@ -147,14 +159,19 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
 
         return <String, dynamic>{
           'id': row['id'] as String? ?? '',
-          'name': customerId == null ? '' : (customerNameById[customerId] ?? ''),
+          'name':
+              customerId == null ? '' : (customerNameById[customerId] ?? ''),
+          'customerAvatarUrl':
+              customerId == null ? '' : (customerAvatarById[customerId] ?? ''),
           'service': (serviceMap?['name'] as String?)?.trim() ?? '',
           'address': address,
           'date': _formatBookingDate(
             (row['booking_date'] as String?)?.trim() ?? '',
             (row['time_slot_text'] as String?)?.trim() ?? '',
           ),
-          'price': amount % 1 == 0 ? amount.toStringAsFixed(0) : amount.toStringAsFixed(2),
+          'price': amount % 1 == 0
+              ? amount.toStringAsFixed(0)
+              : amount.toStringAsFixed(2),
         };
       }).toList();
 
@@ -174,8 +191,23 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
   String _formatBookingDate(String bookingDate, String timeSlot) {
     if (bookingDate.isEmpty && timeSlot.isEmpty) return '';
     final dt = DateTime.tryParse(bookingDate);
-    if (dt == null) return '$bookingDate ${timeSlot.isEmpty ? '' : '- $timeSlot'}'.trim();
-    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    if (dt == null) {
+      return '$bookingDate ${timeSlot.isEmpty ? '' : '- $timeSlot'}'.trim();
+    }
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
     final dateText = '${dt.day} ${months[dt.month - 1]} ${dt.year}';
     return timeSlot.isEmpty ? dateText : '$dateText, $timeSlot';
   }
@@ -191,7 +223,9 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
 
     setState(() => _updatingBookingId = bookingId);
     try {
-      await client.from('bookings').update({'booking_status': status}).eq('id', bookingId);
+      await client
+          .from('bookings')
+          .update({'booking_status': status}).eq('id', bookingId);
       await client.from('booking_status_history').insert({
         'booking_id': bookingId,
         'status': status,
@@ -200,7 +234,9 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
       });
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Request ${status == 'accepted' ? 'accepted' : 'declined'}')),
+        SnackBar(
+            content: Text(
+                'Request ${status == 'accepted' ? 'accepted' : 'declined'}')),
       );
       await _loadDashboardBookings();
     } catch (_) {
@@ -260,7 +296,8 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                       navigator.pop();
                       Future.delayed(const Duration(milliseconds: 150), () {
                         navigator.push(
-                          MaterialPageRoute(builder: (_) => const AddServiceScreen()),
+                          MaterialPageRoute(
+                              builder: (_) => const AddServiceScreen()),
                         );
                       });
                     },
@@ -278,7 +315,8 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                       navigator.pop();
                       Future.delayed(const Duration(milliseconds: 150), () {
                         navigator.push(
-                          MaterialPageRoute(builder: (_) => const CreateOfferScreen()),
+                          MaterialPageRoute(
+                              builder: (_) => const CreateOfferScreen()),
                         );
                       });
                     },
@@ -351,11 +389,11 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF4F4F8),
       body: _buildBodyContent(),
-      bottomNavigationBar: _showBusinessProfile || _showScheduleScreen 
-          ? null 
+      bottomNavigationBar: _showBusinessProfile || _showScheduleScreen
+          ? null
           : _buildBottomNav(),
-      floatingActionButton: _showBusinessProfile || _showScheduleScreen 
-          ? null 
+      floatingActionButton: _showBusinessProfile || _showScheduleScreen
+          ? null
           : SizedBox(
               width: 48,
               height: 48,
@@ -383,7 +421,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
         },
       );
     }
-    
+
     if (_showScheduleScreen) {
       return ProviderScheduleScreen(
         onBack: () {
@@ -451,7 +489,10 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: const [
-                        BoxShadow(color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 4)),
+                        BoxShadow(
+                            color: Color(0x0A000000),
+                            blurRadius: 10,
+                            offset: Offset(0, 4)),
                       ],
                     ),
                     child: const Text(
@@ -470,23 +511,30 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                     final bookingId = request['id'] as String;
                     final isUpdating = _updatingBookingId == bookingId;
                     return Padding(
-                      padding: EdgeInsets.only(bottom: entry.key == _recentRequests.length - 1 ? 0 : 12),
+                      padding: EdgeInsets.only(
+                          bottom:
+                              entry.key == _recentRequests.length - 1 ? 0 : 12),
                       child: _buildRecentRequestCard(
                         bookingId: bookingId,
-                        name: (request['name'] as String).isEmpty ? 'Customer' : request['name'] as String,
+                        name: (request['name'] as String).isEmpty
+                            ? 'Customer'
+                            : request['name'] as String,
                         service: request['service'] as String,
                         address: (request['address'] as String).isEmpty
                             ? 'Address not provided'
                             : request['address'] as String,
                         date: request['date'] as String,
                         price: request['price'] as String,
-                        avatar: Icons.person,
+                        customerAvatarUrl:
+                            request['customerAvatarUrl'] as String,
                         onDecline: isUpdating
                             ? null
-                            : () => _updateBookingStatus(bookingId: bookingId, status: 'rejected'),
+                            : () => _updateBookingStatus(
+                                bookingId: bookingId, status: 'rejected'),
                         onAccept: isUpdating
                             ? null
-                            : () => _updateBookingStatus(bookingId: bookingId, status: 'accepted'),
+                            : () => _updateBookingStatus(
+                                bookingId: bookingId, status: 'accepted'),
                       ),
                     );
                   }),
@@ -578,7 +626,8 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const NotificationScreen()),
+                        MaterialPageRoute(
+                            builder: (_) => const NotificationScreen()),
                       );
                     },
                   ),
@@ -591,7 +640,10 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
     );
   }
 
-  Widget _buildHeaderIconButton({required IconData icon, required VoidCallback onTap, bool hasBadge = false}) {
+  Widget _buildHeaderIconButton(
+      {required IconData icon,
+      required VoidCallback onTap,
+      bool hasBadge = false}) {
     return GestureDetector(
       onTap: onTap,
       child: Stack(
@@ -632,7 +684,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
         Expanded(
           child: _buildStatCard(
             title: 'Today\'s Earnings',
-            value: 'à§³ 3,200',
+            value: '৳ 3,200',
             icon: Icons.account_balance_wallet_rounded,
             color: const Color(0xFF6950F4),
             bgColor: const Color(0xFFEDE9FF),
@@ -678,7 +730,8 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: const [
-          BoxShadow(color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 4)),
+          BoxShadow(
+              color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 4)),
         ],
       ),
       child: Column(
@@ -687,7 +740,8 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
         children: [
           Container(
             padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(
+                color: bgColor, borderRadius: BorderRadius.circular(12)),
             child: Icon(icon, color: color, size: 24),
           ),
           Column(
@@ -695,12 +749,20 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
             children: [
               Text(
                 title,
-                style: const TextStyle(fontFamily: 'Inter', fontSize: 13, color: Colors.black54, fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 13,
+                    color: Colors.black54,
+                    fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 4),
               Text(
                 value,
-                style: const TextStyle(fontFamily: 'Inter', fontSize: 24, fontWeight: FontWeight.w800, color: Colors.black87),
+                style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.black87),
               ),
             ],
           )
@@ -723,25 +785,37 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
         boxShadow: const [
-          BoxShadow(color: Color(0x0A000000), blurRadius: 6, offset: Offset(0, 2)),
+          BoxShadow(
+              color: Color(0x0A000000), blurRadius: 6, offset: Offset(0, 2)),
         ],
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(10)),
+            decoration: BoxDecoration(
+                color: bgColor, borderRadius: BorderRadius.circular(10)),
             child: Icon(icon, color: color, size: 18),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
-               crossAxisAlignment: CrossAxisAlignment.start,
-               mainAxisAlignment: MainAxisAlignment.center,
-               children: [
-                 Text(value, style: const TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w700, color: Colors.black87)),
-                 Text(title, style: const TextStyle(fontFamily: 'Inter', fontSize: 11, color: Colors.black54, fontWeight: FontWeight.w500)),
-               ],
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(value,
+                    style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black87)),
+                Text(title,
+                    style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 11,
+                        color: Colors.black54,
+                        fontWeight: FontWeight.w500)),
+              ],
             ),
           )
         ],
@@ -789,17 +863,20 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
     required String address,
     required String date,
     required String price,
-    required IconData avatar,
+    required String customerAvatarUrl,
     required VoidCallback? onDecline,
     required VoidCallback? onAccept,
   }) {
+    final ImageProvider? avatarProvider =
+        customerAvatarUrl.isEmpty ? null : NetworkImage(customerAvatarUrl);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: const [
-          BoxShadow(color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 4)),
+          BoxShadow(
+              color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 4)),
         ],
       ),
       child: Column(
@@ -810,37 +887,70 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
               Container(
                 width: 48,
                 height: 48,
-                decoration: const BoxDecoration(color: Color(0xFFE8F4FD), shape: BoxShape.circle),
-                child: Icon(avatar, color: const Color(0xFF1E88E5), size: 24),
+                decoration: const BoxDecoration(
+                    color: Color(0xFFE8F4FD), shape: BoxShape.circle),
+                clipBehavior: Clip.antiAlias,
+                child: avatarProvider == null
+                    ? const Icon(Icons.person,
+                        color: Color(0xFF1E88E5), size: 24)
+                    : Image(
+                        image: avatarProvider,
+                        fit: BoxFit.cover,
+                      ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(name, style: const TextStyle(fontFamily: 'Inter', fontSize: 15, fontWeight: FontWeight.w700, color: Colors.black87)),
+                    Text(name,
+                        style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black87)),
                     const SizedBox(height: 4),
-                    Text(service, style: const TextStyle(fontFamily: 'Inter', fontSize: 13, color: Color(0xFF6950F4), fontWeight: FontWeight.w600)),
+                    Text(service,
+                        style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 13,
+                            color: Color(0xFF6950F4),
+                            fontWeight: FontWeight.w600)),
                   ],
                 ),
               ),
-              Text('BDT $price', style: const TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w800, color: Colors.black87)),
+              Text('BDT $price',
+                  style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.black87)),
             ],
           ),
           const SizedBox(height: 16),
           Row(
             children: [
-              const Icon(Icons.location_on_rounded, size: 14, color: Colors.black38),
+              const Icon(Icons.location_on_rounded,
+                  size: 14, color: Colors.black38),
               const SizedBox(width: 6),
-              Text(address, style: const TextStyle(fontFamily: 'Inter', fontSize: 12, color: Colors.black54)),
+              Text(address,
+                  style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 12,
+                      color: Colors.black54)),
             ],
           ),
           const SizedBox(height: 6),
           Row(
             children: [
-              const Icon(Icons.access_time_rounded, size: 14, color: Colors.black38),
+              const Icon(Icons.access_time_rounded,
+                  size: 14, color: Colors.black38),
               const SizedBox(width: 6),
-              Text(date, style: const TextStyle(fontFamily: 'Inter', fontSize: 12, color: Colors.black54)),
+              Text(date,
+                  style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 12,
+                      color: Colors.black54)),
             ],
           ),
           const SizedBox(height: 16),
@@ -851,10 +961,16 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                   onPressed: onDecline,
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: Color(0xFFFF5252)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
-                  child: const Text('Decline', style: TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFFFF5252))),
+                  child: const Text('Decline',
+                      style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFFFF5252))),
                 ),
               ),
               const SizedBox(width: 12),
@@ -864,10 +980,16 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF6950F4),
                     elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
-                  child: const Text('Accept', style: TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+                  child: const Text('Accept',
+                      style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white)),
                 ),
               ),
             ],
@@ -886,7 +1008,8 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
         color: const Color(0xFF6950F4),
         borderRadius: BorderRadius.circular(16),
         boxShadow: const [
-          BoxShadow(color: Color(0x336950F4), blurRadius: 12, offset: Offset(0, 6)),
+          BoxShadow(
+              color: Color(0x336950F4), blurRadius: 12, offset: Offset(0, 6)),
         ],
       ),
       child: Row(
@@ -899,8 +1022,18 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
             ),
             child: const Column(
               children: [
-                 Text('14', style: TextStyle(fontFamily: 'Inter', fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white)),
-                 Text('APR', style: TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
+                Text('14',
+                    style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white)),
+                Text('APR',
+                    style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white)),
               ],
             ),
           ),
@@ -909,19 +1042,30 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('TV Repairing Service', style: TextStyle(fontFamily: 'Inter', fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
+                Text('TV Repairing Service',
+                    style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white)),
                 SizedBox(height: 6),
                 Row(
                   children: [
-                    Icon(Icons.access_time_rounded, size: 14, color: Colors.white70),
+                    Icon(Icons.access_time_rounded,
+                        size: 14, color: Colors.white70),
                     SizedBox(width: 6),
-                    Text('11:00 AM - 12:30 PM', style: TextStyle(fontFamily: 'Inter', fontSize: 12, color: Colors.white70)),
+                    Text('11:00 AM - 12:30 PM',
+                        style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 12,
+                            color: Colors.white70)),
                   ],
                 ),
               ],
             ),
           ),
-          const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white70, size: 16),
+          const Icon(Icons.arrow_forward_ios_rounded,
+              color: Colors.white70, size: 16),
         ],
       ),
     );
@@ -942,17 +1086,23 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             _buildNavItem(icon: Icons.home_rounded, label: 'Home', index: 0),
-            _buildNavItem(icon: Icons.work_outline_rounded, label: 'Jobs', index: 1),
+            _buildNavItem(
+                icon: Icons.work_outline_rounded, label: 'Jobs', index: 1),
             const SizedBox(width: 48), // Space for FAB
-            _buildNavItem(icon: Icons.grid_view_rounded, label: 'Services', index: 2),
-            _buildNavItem(icon: Icons.person_outline_rounded, label: 'Profile', index: 4), // Index 4 due to gap
+            _buildNavItem(
+                icon: Icons.grid_view_rounded, label: 'Services', index: 2),
+            _buildNavItem(
+                icon: Icons.person_outline_rounded,
+                label: 'Profile',
+                index: 4), // Index 4 due to gap
           ],
         ),
       ),
     );
   }
 
-  Widget _buildNavItem({required IconData icon, required String label, required int index}) {
+  Widget _buildNavItem(
+      {required IconData icon, required String label, required int index}) {
     final selected = _selectedNavIndex == index;
     return GestureDetector(
       onTap: () {
@@ -987,4 +1137,3 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
     );
   }
 }
-

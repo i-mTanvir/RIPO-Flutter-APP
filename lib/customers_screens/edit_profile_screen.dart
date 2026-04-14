@@ -1,4 +1,7 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -17,6 +20,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   bool _isLoading = true;
   bool _isSaving = false;
+  bool _isUploadingImage = false;
+  Uint8List? _selectedAvatarBytes;
+  String _avatarUrl = '';
 
   @override
   void initState() {
@@ -46,7 +52,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     try {
       final profile = await client
           .from('profiles')
-          .select('full_name, phone, email, gender')
+          .select('full_name, phone, email, gender, avatar_url')
           .eq('id', userId)
           .maybeSingle();
 
@@ -58,6 +64,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         _phoneController.text = (profile['phone'] as String?)?.trim() ?? '';
         _emailController.text = (profile['email'] as String?)?.trim() ?? '';
         _genderController.text = (profile['gender'] as String?)?.trim() ?? '';
+        _avatarUrl = (profile['avatar_url'] as String?)?.trim() ?? '';
       }
 
       setState(() => _isLoading = false);
@@ -93,6 +100,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         'gender': _genderController.text.trim().isEmpty
             ? null
             : _genderController.text.trim(),
+        'avatar_url': _avatarUrl.isEmpty ? null : _avatarUrl,
         'updated_at': DateTime.now().toIso8601String(),
       }).eq('id', userId);
 
@@ -118,8 +126,95 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
+  Future<void> _pickAndUploadProfileImage() async {
+    if (_isLoading || _isSaving || _isUploadingImage) return;
+
+    final client = Supabase.instance.client;
+    final userId = client.auth.currentUser?.id;
+    if (userId == null) return;
+
+    setState(() => _isUploadingImage = true);
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+      );
+
+      if (picked == null) {
+        if (mounted) setState(() => _isUploadingImage = false);
+        return;
+      }
+
+      final bytes = await picked.readAsBytes();
+      if (!mounted) return;
+      setState(() {
+        _selectedAvatarBytes = bytes;
+      });
+
+      final ext = _fileExtension(picked.name);
+      final path = '$userId/profile-${DateTime.now().millisecondsSinceEpoch}.$ext';
+      final contentType = _contentTypeForExtension(ext);
+
+      await client.storage.from('customer-profile-images').uploadBinary(
+            path,
+            bytes,
+            fileOptions: FileOptions(contentType: contentType, upsert: true),
+          );
+
+      final publicUrl =
+          client.storage.from('customer-profile-images').getPublicUrl(path);
+
+      if (!mounted) return;
+      setState(() {
+        _avatarUrl = publicUrl;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Image uploaded. Tap Save Changes to apply.')),
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not upload image.')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isUploadingImage = false);
+      }
+    }
+  }
+
+  String _fileExtension(String fileName) {
+    final lower = fileName.toLowerCase();
+    if (lower.endsWith('.png')) return 'png';
+    if (lower.endsWith('.webp')) return 'webp';
+    return 'jpg';
+  }
+
+  String _contentTypeForExtension(String ext) {
+    switch (ext) {
+      case 'png':
+        return 'image/png';
+      case 'webp':
+        return 'image/webp';
+      default:
+        return 'image/jpeg';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final ImageProvider avatarProvider;
+    if (_selectedAvatarBytes != null) {
+      avatarProvider = MemoryImage(_selectedAvatarBytes!);
+    } else if (_avatarUrl.isNotEmpty) {
+      avatarProvider = NetworkImage(_avatarUrl);
+    } else {
+      avatarProvider = const AssetImage('lib/media/clean_house_offer.png');
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -156,22 +251,36 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             color: const Color(0xFFE8F4FD),
                             shape: BoxShape.circle,
                             border: Border.all(color: Colors.black12, width: 2),
+                            image: DecorationImage(
+                              image: avatarProvider,
+                              fit: BoxFit.cover,
+                            ),
                           ),
-                          child: const Icon(Icons.person,
-                              size: 60, color: Colors.black38),
                         ),
                         Positioned(
                           bottom: 0,
                           right: 4,
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF6950F4), // Purple brand
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 2),
+                          child: GestureDetector(
+                            onTap: _pickAndUploadProfileImage,
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF6950F4), // Purple brand
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 2),
+                              ),
+                              child: _isUploadingImage
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Icon(Icons.camera_alt,
+                                      color: Colors.white, size: 16),
                             ),
-                            child: const Icon(Icons.camera_alt,
-                                color: Colors.white, size: 16),
                           ),
                         ),
                       ],

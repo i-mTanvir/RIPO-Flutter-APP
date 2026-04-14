@@ -68,15 +68,20 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
           .toList();
 
       final customerNameById = <String, String>{};
+      final customerAvatarById = <String, String>{};
       if (customerIds.isNotEmpty) {
         final profileRows = await client
             .from('profiles')
-            .select('id, full_name')
+            .select('id, full_name, avatar_url')
             .inFilter('id', customerIds);
         for (final p in List<Map<String, dynamic>>.from(profileRows)) {
           final id = p['id'] as String?;
           final name = (p['full_name'] as String?)?.trim() ?? '';
-          if (id != null) customerNameById[id] = name;
+          final avatarUrl = (p['avatar_url'] as String?)?.trim() ?? '';
+          if (id != null) {
+            customerNameById[id] = name;
+            customerAvatarById[id] = avatarUrl;
+          }
         }
       }
 
@@ -94,6 +99,8 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
           'bookingCode': (row['booking_code'] as String?)?.trim() ?? '',
           'statusRaw': (row['booking_status'] as String?)?.trim() ?? 'pending',
           'customerName': customerId == null ? '' : (customerNameById[customerId] ?? ''),
+          'customerAvatarUrl':
+              customerId == null ? '' : (customerAvatarById[customerId] ?? ''),
           'serviceName': (serviceMap?['name'] as String?)?.trim() ?? '',
           'address': [addressLine, area, city].where((e) => e.isNotEmpty).join(', '),
           'date': _formatBookingDate(
@@ -292,6 +299,7 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
             address: (j['address'] as String).isEmpty ? 'Address not provided' : j['address'] as String,
             date: j['date'] as String,
             price: j['price'] as String,
+            customerAvatarUrl: j['customerAvatarUrl'] as String,
             showContactOptions: false,
             actionButtons: _buildActionButtons(
               negativeLabel: 'Decline',
@@ -330,6 +338,7 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
             address: (j['address'] as String).isEmpty ? 'Address not provided' : j['address'] as String,
             date: j['date'] as String,
             price: j['price'] as String,
+            customerAvatarUrl: j['customerAvatarUrl'] as String,
             showContactOptions: true,
             actionButtons: _buildActionButtons(
               negativeLabel: 'Cancel Job',
@@ -376,6 +385,7 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
             address: (j['address'] as String).isEmpty ? 'Address not provided' : j['address'] as String,
             date: j['date'] as String,
             price: j['price'] as String,
+            customerAvatarUrl: j['customerAvatarUrl'] as String,
             isCompleted: isCompleted,
           ),
         );
@@ -405,10 +415,13 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
     required String address,
     required String date,
     required String price,
+    required String customerAvatarUrl,
     bool showContactOptions = false,
     bool isCompleted = false,
     Widget? actionButtons,
   }) {
+    final ImageProvider? avatarProvider =
+        customerAvatarUrl.isEmpty ? null : NetworkImage(customerAvatarUrl);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -461,7 +474,13 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
                   color: Color(0xFFE8F4FD),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.person, color: Color(0xFF1E88E5), size: 26),
+                clipBehavior: Clip.antiAlias,
+                child: avatarProvider == null
+                    ? const Icon(Icons.person, color: Color(0xFF1E88E5), size: 26)
+                    : Image(
+                        image: avatarProvider,
+                        fit: BoxFit.cover,
+                      ),
               ),
               const SizedBox(width: 12),
               Expanded(

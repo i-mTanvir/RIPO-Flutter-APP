@@ -48,6 +48,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
             booking_status,
             created_at,
             service_id,
+            customer_id,
             provider_id,
             customer_note,
             provider_note,
@@ -73,10 +74,39 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
       final serviceMap = row['services'] as Map<String, dynamic>?;
       final providerMap = row['provider_profiles'] as Map<String, dynamic>?;
       final locationMap = row['locations'] as Map<String, dynamic>?;
+      final customerId = row['customer_id'] as String?;
+      final providerId = row['provider_id'] as String?;
 
       final ownerName = (providerMap?['owner_name'] as String?)?.trim() ?? '';
       final businessName = (providerMap?['business_name'] as String?)?.trim() ?? '';
       final providerName = ownerName.isNotEmpty ? ownerName : businessName;
+
+      final profileIds = <String>{};
+      if (customerId != null && customerId.isNotEmpty) profileIds.add(customerId);
+      if (providerId != null && providerId.isNotEmpty) profileIds.add(providerId);
+      final profileMap = <String, Map<String, dynamic>>{};
+      if (profileIds.isNotEmpty) {
+        final profileRows = await client
+            .from('profiles')
+            .select('id, full_name, avatar_url')
+            .inFilter('id', profileIds.toList());
+        for (final item in List<Map<String, dynamic>>.from(profileRows)) {
+          final id = item['id'] as String?;
+          if (id != null) {
+            profileMap[id] = item;
+          }
+        }
+      }
+
+      final providerAvatarUrl = providerId == null
+          ? ''
+          : ((profileMap[providerId]?['avatar_url'] as String?)?.trim() ?? '');
+      final customerAvatarUrl = customerId == null
+          ? ''
+          : ((profileMap[customerId]?['avatar_url'] as String?)?.trim() ?? '');
+      final customerName = customerId == null
+          ? ''
+          : ((profileMap[customerId]?['full_name'] as String?)?.trim() ?? '');
 
       final addressLine = (locationMap?['address_line'] as String?)?.trim() ?? '';
       final area = (locationMap?['area'] as String?)?.trim() ?? '';
@@ -107,6 +137,9 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
           'status': _statusLabel(statusRaw),
           'serviceName': (serviceMap?['name'] as String?)?.trim() ?? '',
           'providerName': providerName,
+          'providerAvatarUrl': providerAvatarUrl,
+          'customerAvatarUrl': customerAvatarUrl,
+          'customerName': customerName,
           'date': _formatBookingDate(
             (row['booking_date'] as String?)?.trim() ?? '',
             (row['time_slot_text'] as String?)?.trim() ?? '',
@@ -379,8 +412,60 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
           _buildSummaryRow('Booking Date:', (_details['date'] as String?) ?? ''),
           const SizedBox(height: 6),
           _buildSummaryRow('Address:', (_details['address'] as String?) ?? ''),
+          const SizedBox(height: 12),
+          _buildBookedByRow(),
         ],
       ),
+    );
+  }
+
+  Widget _buildBookedByRow() {
+    final customerName = (_details['customerName'] as String?) ?? '';
+    final customerAvatarUrl = (_details['customerAvatarUrl'] as String?) ?? '';
+    final ImageProvider? avatarProvider =
+        customerAvatarUrl.isEmpty ? null : NetworkImage(customerAvatarUrl);
+
+    return Row(
+      children: [
+        const SizedBox(
+          width: 100,
+          child: Text(
+            'Booked By:',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              color: Colors.black38,
+              fontWeight: FontWeight.w500,
+              fontSize: 13,
+            ),
+          ),
+        ),
+        Container(
+          width: 26,
+          height: 26,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: const Color(0xFFE8F4FD),
+            image: avatarProvider == null
+                ? null
+                : DecorationImage(image: avatarProvider, fit: BoxFit.cover),
+          ),
+          child: avatarProvider == null
+              ? const Icon(Icons.person, size: 16, color: Colors.black54)
+              : null,
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            customerName,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              color: Colors.black87,
+              fontWeight: FontWeight.w500,
+              fontSize: 13,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -461,6 +546,10 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
   }
 
   Widget _buildServiceProviderCard() {
+    final providerAvatarUrl = (_details['providerAvatarUrl'] as String?) ?? '';
+    final ImageProvider? providerAvatar =
+        providerAvatarUrl.isEmpty ? null : NetworkImage(providerAvatarUrl);
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -508,8 +597,16 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                     decoration: BoxDecoration(
                       color: Colors.grey.shade200,
                       shape: BoxShape.circle,
+                      image: providerAvatar == null
+                          ? null
+                          : DecorationImage(
+                              image: providerAvatar,
+                              fit: BoxFit.cover,
+                            ),
                     ),
-                    child: const Icon(Icons.person, size: 30, color: Colors.black54),
+                    child: providerAvatar == null
+                        ? const Icon(Icons.person, size: 30, color: Colors.black54)
+                        : null,
                   ),
                   Positioned(
                     right: 2,
