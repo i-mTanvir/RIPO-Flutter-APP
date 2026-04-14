@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:ripo/Common_Screens/forget_password.dart';
 import 'package:ripo/Common_Screens/signup_screen.dart';
-import 'package:ripo/customers_screens/customer_dashboard_screen.dart';
-import 'package:ripo/providers_screens/provider_dashboard_screen.dart';
-import 'package:ripo/admin_screens/admin_dashboard_screen.dart';
+import 'package:ripo/core/app_snackbar.dart';
+import 'package:ripo/core/auth_service.dart';
+import 'package:ripo/core/role_navigation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,12 +18,45 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _rememberMe = false;
+  bool _isLoading = false;
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _login() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      context.showAppSnackBar('Email and password are required.', isError: true);
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      final role = await AuthService.signIn(email: email, password: password);
+      if (!mounted) return;
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => screenForRole(role)),
+        (route) => false,
+      );
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      context.showAppSnackBar(error.message, isError: true);
+    } catch (_) {
+      if (!mounted) return;
+      context.showAppSnackBar('Invalid email or password. Try again.', isError: true);
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   @override
@@ -37,8 +71,6 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-
-              // ── Top bar: logo + language ──
               SizedBox(height: size.height * 0.02),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -73,18 +105,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ],
               ),
-
-              // ── Center image ──
               SizedBox(height: size.height * 0.04),
               Image.asset(
                 'lib/media/splash_image.png',
                 width: size.width * 0.4,
                 fit: BoxFit.contain,
               ),
-
               SizedBox(height: size.height * 0.04),
-
-              // ── Email / Phone field ──
               Align(
                 alignment: Alignment.centerLeft,
                 child: RichText(
@@ -96,11 +123,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       color: Colors.black87,
                     ),
                     children: [
-                      TextSpan(text: 'Email/Phone Number'),
-                      TextSpan(
-                        text: '*',
-                        style: TextStyle(color: Colors.red),
-                      ),
+                      TextSpan(text: 'Email Address'),
+                      TextSpan(text: '*', style: TextStyle(color: Colors.red)),
                     ],
                   ),
                 ),
@@ -111,16 +135,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 keyboardType: TextInputType.emailAddress,
                 style: const TextStyle(fontFamily: 'Inter', fontSize: 14),
                 decoration: InputDecoration(
-                  hintText: 'Enter email or phone number',
+                  hintText: 'Enter email address',
                   hintStyle: const TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 14,
                     color: Colors.black38,
                   ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
                     borderSide: const BorderSide(color: Colors.black26),
@@ -135,10 +156,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
-
               SizedBox(height: size.height * 0.025),
-
-              // ── Password field ──
               Align(
                 alignment: Alignment.centerLeft,
                 child: RichText(
@@ -151,10 +169,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     children: [
                       TextSpan(text: 'Password'),
-                      TextSpan(
-                        text: '*',
-                        style: TextStyle(color: Colors.red),
-                      ),
+                      TextSpan(text: '*', style: TextStyle(color: Colors.red)),
                     ],
                   ),
                 ),
@@ -171,10 +186,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     fontSize: 14,
                     color: Colors.black38,
                   ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
                     borderSide: const BorderSide(color: Colors.black26),
@@ -200,10 +212,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
-
               SizedBox(height: size.height * 0.015),
-
-              // ── Remember me + Forgot password ──
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -211,8 +220,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     children: [
                       Checkbox(
                         value: _rememberMe,
-                        onChanged: (val) =>
-                            setState(() => _rememberMe = val!),
+                        onChanged: (val) => setState(() => _rememberMe = val ?? false),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(3),
                         ),
@@ -221,7 +229,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                       const Text(
-                        'Remember  me',
+                        'Remember me',
                         style: TextStyle(
                           fontFamily: 'Inter',
                           fontSize: 13,
@@ -234,8 +242,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                            builder: (_) => const ForgetPasswordScreen()),
+                        MaterialPageRoute(builder: (_) => const ForgetPasswordScreen()),
                       );
                     },
                     child: const Text(
@@ -250,42 +257,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ],
               ),
-
               const Spacer(),
-
-              // ── Log in button ──
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () {
-                    final email = _emailController.text.trim();
-                    final password = _passwordController.text.trim();
-
-                    Widget? destination;
-
-                    if (email == 'customer@ripo.com' && password == '1234') {
-                      destination = const CustomerDashboardScreen();
-                    } else if (email == 'provider@ripo.com' && password == '1234') {
-                      destination = const ProviderDashboardScreen();
-                    } else if (email == 'admin@ripo.com' && password == '1234') {
-                      destination = const AdminDashboardScreen();
-                    }
-
-                    if (destination != null) {
-                      Navigator.pushAndRemoveUntil(
-                        context,
-                        MaterialPageRoute(builder: (_) => destination!),
-                        (route) => false,
-                      );
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Invalid email or password. Try again.'),
-                          backgroundColor: Color(0xFFD32F2F),
-                        ),
-                      );
-                    }
-                  },
+                  onPressed: _isLoading ? null : _login,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF6950F4),
                     padding: const EdgeInsets.symmetric(vertical: 16),
@@ -294,9 +270,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     elevation: 0,
                   ),
-                  child: const Text(
-                    'Log in',
-                    style: TextStyle(
+                  child: Text(
+                    _isLoading ? 'Logging In...' : 'Log in',
+                    style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -305,10 +281,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
-
               SizedBox(height: size.height * 0.02),
-
-              // ── Sign Up link ──
               RichText(
                 text: TextSpan(
                   style: const TextStyle(
@@ -340,9 +313,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ],
                 ),
               ),
-
               SizedBox(height: size.height * 0.04),
-
             ],
           ),
         ),

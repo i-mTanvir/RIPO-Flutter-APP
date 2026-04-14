@@ -21,6 +21,19 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
   late final PageController _offerPageController;
   Timer? _offerTimer;
 
+  void _pushScreen(Widget screen) {
+    FocusManager.instance.primaryFocus?.unfocus();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await Future<void>.delayed(const Duration(milliseconds: 16));
+      if (!mounted) {
+        return;
+      }
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => screen),
+      );
+    });
+  }
+
   // ── Data ────────────────────────────────────────────────────
 
   final List<Map<String, dynamic>> _offers = [
@@ -148,12 +161,7 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
         width: 48,
         height: 48,
         child: FloatingActionButton(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const SearchScreen()),
-            );
-          },
+          onPressed: () => _pushScreen(const SearchScreen()),
           backgroundColor: const Color(0xFF6950F4),
           elevation: 4,
           shape: RoundedRectangleBorder(
@@ -241,12 +249,7 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
                   ),
                   GestureDetector(
                     onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const NotificationScreen(),
-                        ),
-                      );
+                      _pushScreen(const NotificationScreen());
                     },
                     child: Stack(
                       clipBehavior: Clip.none,
@@ -584,12 +587,7 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
             child: InkWell(
               onTap: () {
                 final query = isButton ? '' : s['label'] as String;
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => SearchScreen(initialQuery: query),
-                  ),
-                );
+                _pushScreen(SearchScreen(initialQuery: query));
               },
               borderRadius: BorderRadius.circular(12),
               child: Row(

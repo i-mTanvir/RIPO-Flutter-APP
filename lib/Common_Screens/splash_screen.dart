@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:ripo/Common_Screens/welcome_screen.dart';
+import 'package:ripo/core/auth_service.dart';
+import 'package:ripo/core/role_navigation.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -15,9 +17,24 @@ class _SplashScreenState extends State<SplashScreen> {
     super.initState();
     Timer(const Duration(seconds: 3), () {
       if (mounted) {
+        final session = AuthService.currentSession;
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+          MaterialPageRoute(
+            builder: (_) {
+              if (session == null) {
+                return const WelcomeScreen();
+              }
+
+              final roleValue =
+                  session.user.userMetadata?['role'] as String? ?? 'customer';
+              final role = AppUserRole.values.firstWhere(
+                (item) => item.name == roleValue,
+                orElse: () => AppUserRole.customer,
+              );
+              return screenForRole(role);
+            },
+          ),
         );
       }
     });

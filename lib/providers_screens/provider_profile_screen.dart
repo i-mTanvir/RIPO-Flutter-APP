@@ -6,8 +6,18 @@ import 'package:ripo/providers_screens/provider_wallet_screen.dart';
 class ProviderProfileScreen extends StatelessWidget {
   final VoidCallback onBusinessProfileTap;
   final VoidCallback onScheduleTap;
+  final String businessName;
+  final String ownerName;
+  final String avatarUrl;
 
-  ProviderProfileScreen({super.key, required this.onBusinessProfileTap, required this.onScheduleTap});
+  ProviderProfileScreen({
+    super.key,
+    required this.onBusinessProfileTap,
+    required this.onScheduleTap,
+    required this.businessName,
+    required this.ownerName,
+    required this.avatarUrl,
+  });
 
   final List<Map<String, dynamic>> _generalItems = [
     {'icon': Icons.storefront_rounded, 'label': 'Business\nProfile'},
@@ -59,6 +69,10 @@ class ProviderProfileScreen extends StatelessWidget {
   }
 
   Widget _buildHeader() {
+    final ImageProvider avatarProvider = avatarUrl.isNotEmpty
+        ? NetworkImage(avatarUrl)
+        : const AssetImage('lib/media/clean_house_offer.png');
+
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.fromLTRB(16, 60, 16, 24), // Accounts for status bar
@@ -73,8 +87,8 @@ class ProviderProfileScreen extends StatelessWidget {
                   shape: BoxShape.circle,
                   border: Border.all(color: const Color(0xFF6950F4), width: 2),
                   color: const Color(0xFFE8F4FD),
-                  image: const DecorationImage(
-                    image: AssetImage('lib/media/clean_house_offer.png'), // Mock profile picture
+                  image: DecorationImage(
+                    image: avatarProvider,
                     fit: BoxFit.cover,
                   ),
                 ),
@@ -96,10 +110,10 @@ class ProviderProfileScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  children: const [
+                  children: [
                     Text(
-                      'Elite Servicing BD',
-                      style: TextStyle(
+                      businessName,
+                      style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
@@ -107,13 +121,13 @@ class ProviderProfileScreen extends StatelessWidget {
                       ),
                     ),
                     SizedBox(width: 6),
-                    Icon(Icons.verified, color: Color(0xFF2196F3), size: 16),
+                    const Icon(Icons.verified, color: Color(0xFF2196F3), size: 16),
                   ],
                 ),
                 const SizedBox(height: 4),
-                const Text(
-                  'Shaidul Islam • ID: #P45210',
-                  style: TextStyle(
+                Text(
+                  ownerName,
+                  style: const TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -309,3 +323,4 @@ class ProviderProfileScreen extends StatelessWidget {
     );
   }
 }
+

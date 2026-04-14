@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:ripo/core/app_snackbar.dart';
+import 'package:ripo/core/auth_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ForgetPasswordScreen extends StatefulWidget {
   const ForgetPasswordScreen({super.key});
@@ -9,6 +12,7 @@ class ForgetPasswordScreen extends StatefulWidget {
 
 class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
   final _emailController = TextEditingController();
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -133,9 +137,7 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () {
-                    
-                  },
+                  onPressed: _isLoading ? null : _verifyEmail,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF6950F4),
                     padding: const EdgeInsets.symmetric(vertical: 16),
@@ -145,7 +147,7 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
                     elevation: 0,
                   ),
                   child: const Text(
-                    'Verify',
+                    'Send Reset Email',
                     style: TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 16,
@@ -161,5 +163,31 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _verifyEmail() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      context.showAppSnackBar('Enter your email address first.', isError: true);
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      await AuthService.resetPassword(email);
+      if (!mounted) return;
+      context.showAppSnackBar('Password reset email sent.');
+      Navigator.pop(context);
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      context.showAppSnackBar(error.message, isError: true);
+    } catch (_) {
+      if (!mounted) return;
+      context.showAppSnackBar('Could not send reset email.', isError: true);
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 }

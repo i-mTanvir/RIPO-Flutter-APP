@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:ripo/customers_screens/service_details_screen.dart';
 
@@ -13,6 +14,32 @@ class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String _sortBy = 'Recommended'; // Options: Recommended, Price (Low to High), Price (High to Low), Rating (High to Low)
+
+  void _popScreen<T extends Object?>([T? result]) {
+    FocusManager.instance.primaryFocus?.unfocus();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await Future<void>.delayed(const Duration(milliseconds: 16));
+      if (!mounted) {
+        return;
+      }
+      Navigator.of(context).pop(result);
+    });
+  }
+
+  void _pushToDetails(Map<String, dynamic> serviceData) {
+    FocusManager.instance.primaryFocus?.unfocus();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await Future<void>.delayed(const Duration(milliseconds: 16));
+      if (!mounted) {
+        return;
+      }
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ServiceDetailsScreen(serviceData: serviceData),
+        ),
+      );
+    });
+  }
 
   @override
   void initState() {
@@ -189,7 +216,7 @@ class _SearchScreenState extends State<SearchScreen> {
           : null,
       onTap: () {
         setState(() => _sortBy = value);
-        Navigator.pop(context);
+        _popScreen();
       },
       contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
     );
@@ -213,7 +240,7 @@ class _SearchScreenState extends State<SearchScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded, color: Colors.black87, size: 22),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => _popScreen(),
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
@@ -257,7 +284,7 @@ class _SearchScreenState extends State<SearchScreen> {
               child: TextField(
                 controller: _searchController,
                 onChanged: (val) => setState(() => _searchQuery = val),
-                autofocus: true,
+                autofocus: !kIsWeb,
                 style: const TextStyle(fontFamily: 'Inter', fontSize: 13, color: Colors.black87),
                 decoration: const InputDecoration(
                   hintText: 'Search...',
@@ -346,14 +373,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
   Widget _buildServiceCard(Map<String, dynamic> s) {
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ServiceDetailsScreen(serviceData: s),
-          ),
-        );
-      },
+      onTap: () => _pushToDetails(s),
       child: Container(
         decoration: BoxDecoration(
         color: Colors.white,

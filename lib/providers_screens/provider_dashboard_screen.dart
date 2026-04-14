@@ -8,6 +8,7 @@ import 'package:ripo/providers_screens/provider_schedule_screen.dart';
 import 'package:ripo/providers_screens/provider_profile_screen.dart';
 import 'package:ripo/providers_screens/add_service_screen.dart';
 import 'package:ripo/providers_screens/create_offer_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ProviderDashboardScreen extends StatefulWidget {
   const ProviderDashboardScreen({super.key});
@@ -20,6 +21,53 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
   int _selectedNavIndex = 0;
   bool _showBusinessProfile = false;
   bool _showScheduleScreen = false;
+  String _ownerName = 'Provider';
+  String _businessName = 'Business';
+  String _avatarUrl = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProviderProfile();
+  }
+
+  Future<void> _loadProviderProfile() async {
+    final client = Supabase.instance.client;
+    final userId = client.auth.currentUser?.id;
+    if (userId == null) return;
+
+    try {
+      final results = await Future.wait([
+        client
+            .from('provider_profiles')
+            .select('owner_name, business_name')
+            .eq('user_id', userId)
+            .maybeSingle(),
+        client.from('profiles').select('avatar_url').eq('id', userId).maybeSingle(),
+      ]);
+
+      if (!mounted) return;
+      final provider = results[0];
+      final profile = results[1];
+      final ownerName = (provider?['owner_name'] as String?)?.trim();
+      final businessName = (provider?['business_name'] as String?)?.trim();
+      final avatarUrl = (profile?['avatar_url'] as String?)?.trim();
+
+      setState(() {
+        if (ownerName != null && ownerName.isNotEmpty) {
+          _ownerName = ownerName;
+        }
+        if (businessName != null && businessName.isNotEmpty) {
+          _businessName = businessName;
+        }
+        if (avatarUrl != null && avatarUrl.isNotEmpty) {
+          _avatarUrl = avatarUrl;
+        }
+      });
+    } catch (_) {
+      // Keep default fallback values.
+    }
+  }
 
   // ── Handlers ─────────────────────────────────────────────────────────────
 
@@ -211,6 +259,9 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
       return const ProviderWalletScreen();
     } else if (_selectedNavIndex == 4) {
       return ProviderProfileScreen(
+        ownerName: _ownerName,
+        businessName: _businessName,
+        avatarUrl: _avatarUrl,
         onBusinessProfileTap: () {
           setState(() {
             _showBusinessProfile = true;
@@ -273,6 +324,10 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
   // ── Header ───────────────────────────────────────────────────────────────
 
   Widget _buildHeader() {
+    final ImageProvider avatarProvider = _avatarUrl.isNotEmpty
+        ? NetworkImage(_avatarUrl)
+        : const AssetImage('lib/media/clean_house_offer.png');
+
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -301,17 +356,17 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                       color: Colors.white,
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 2),
-                      image: const DecorationImage(
-                        image: AssetImage('lib/media/clean_house_offer.png'), // placeholder
+                      image: DecorationImage(
+                        image: avatarProvider,
                         fit: BoxFit.cover,
                       ),
                     ),
                   ),
                   const SizedBox(width: 12),
-                  const Column(
+                  Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      const Text(
                         'Good Morning,',
                         style: TextStyle(
                           fontFamily: 'Inter',
@@ -321,7 +376,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                         ),
                       ),
                       Text(
-                        'Provider Momin',
+                        _ownerName,
                         style: TextStyle(
                           fontFamily: 'Inter',
                           fontSize: 16,

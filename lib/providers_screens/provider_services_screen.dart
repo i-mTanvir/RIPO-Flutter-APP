@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:ripo/customers_screens/service_details_screen.dart';
+import 'package:ripo/core/app_snackbar.dart';
+import 'package:ripo/core/provider_service_service.dart';
 import 'package:ripo/providers_screens/add_service_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ProviderServicesScreen extends StatefulWidget {
   const ProviderServicesScreen({super.key});
@@ -10,74 +12,188 @@ class ProviderServicesScreen extends StatefulWidget {
 }
 
 class _ProviderServicesScreenState extends State<ProviderServicesScreen> {
-  // Mock data for the provider's active services
-  final List<Map<String, dynamic>> _myServices = [
-    {
-      'id': '1',
-      'name': 'AC Cooling Problem Repair',
-      'category': 'AC Repair',
-      'price': '500',
-      'originalPrice': '600',
-      'duration': '30-45 mins',
-      'rating': '4.5',
-      'reviews': '24',
-      'isActive': true,
-      'image': 'lib/media/AC_servicing.png'
-    },
-    {
-      'id': '2',
-      'name': 'Deep Chemical House Cleaning',
-      'category': 'Cleaning',
-      'price': '1200',
-      'originalPrice': '1500',
-      'duration': '3 Hours',
-      'rating': '4.8',
-      'reviews': '15',
-      'isActive': true,
-      'image': 'lib/media/clean_house_offer.png'
-    },
-    {
-      'id': '3',
-      'name': 'Circuit Board Repair',
-      'category': 'Electronics',
-      'price': '800',
-      'originalPrice': '800',
-      'duration': '1 Hour',
-      'rating': '4.2',
-      'reviews': '8',
-      'isActive': false, // paused
-      'image': 'lib/media/TV_servicing.png'
-    },
-  ];
+  bool _isLoading = true;
+  List<ProviderServiceRecord> _services = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadServices();
+  }
+
+  // ✅ Single reload method — always sets _isLoading true/false itself.
+  //    Never call setState(_isLoading = true) + await _loadServices() separately.
+  Future<void> _loadServices() async {
+    // Only set loading=true if the widget is still mounted and not already loading
+    if (mounted && !_isLoading) {
+      setState(() => _isLoading = true);
+    }
+    try {
+      final services = await ProviderServiceService.fetchProviderServices();
+      if (!mounted) return; // ✅ guard after every await
+      setState(() {
+        _services = services;
+        _isLoading = false;
+      });
+    } on PostgrestException catch (error) {
+      if (!mounted) return;
+      context.showAppSnackBar(error.message, isError: true);
+      setState(() => _isLoading = false);
+    } catch (_) {
+      if (!mounted) return;
+      context.showAppSnackBar('Could not load provider services.',
+          isError: true);
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _openAddService({ProviderServiceRecord? service}) async {
+    // ✅ Await the navigation — Flutter pointer system is suspended during push
+    final didChange = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AddServiceScreen(
+          serviceData: service == null
+              ? null
+              : {
+                  'id': service.id,
+                  'name': service.name,
+                  'categoryId': service.categoryId,
+                  'categoryName': service.categoryName,
+                  'regularPrice': service.regularPrice,
+                  'offerPrice': service.offerPrice,
+                  'durationText': service.durationText,
+                  'description': service.description,
+                  'variations': service.variations,
+                  'faqs': service.faqs,
+                  'mediaUrls': service.mediaUrls,
+                },
+        ),
+      ),
+    );
+
+    // ✅ Guard immediately after Navigator.push returns (route closed)
+    if (!mounted) return;
+
+    if (didChange == true) {
+      // ✅ _loadServices sets _isLoading itself — no separate setState here
+      await _loadServices();
+    }
+  }
+
+  Future<void> _toggleActive(ProviderServiceRecord service) async {
+    try {
+      await ProviderServiceService.toggleServiceActive(
+        serviceId: service.id,
+        isActive: !service.isActive,
+      );
+      if (!mounted) return; // ✅ guard after await
+      context.showAppSnackBar(
+        service.isActive ? 'Service paused.' : 'Service activated.',
+      );
+      // ✅ _loadServices sets _isLoading itself — no separate setState here
+      await _loadServices();
+    } on PostgrestException catch (error) {
+      if (!mounted) return;
+      context.showAppSnackBar(error.message, isError: true);
+    } catch (_) {
+      if (!mounted) return;
+      context.showAppSnackBar('Could not update service status.',
+          isError: true);
+    }
+  }
+
+  Future<void> _deleteService(ProviderServiceRecord service) async {
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Delete Service'),
+            content: Text('Delete "${service.name}" permanently?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text(
+                  'Delete',
+                  style: TextStyle(color: Color(0xFFD32F2F)),
+                ),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+
+    // ✅ Guard immediately after showDialog returns (dialog closed)
+    if (!mounted) return;
+
+    if (!confirmed) return;
+
+    try {
+      await ProviderServiceService.deleteService(service);
+      if (!mounted) return; // ✅ guard after await
+      context.showAppSnackBar('Service deleted.');
+      // ✅ _loadServices sets _isLoading itself — no separate setState here
+      await _loadServices();
+    } on PostgrestException catch (error) {
+      if (!mounted) return;
+      context.showAppSnackBar(error.message, isError: true);
+    } catch (_) {
+      if (!mounted) return;
+      context.showAppSnackBar('Could not delete service.', isError: true);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF4F4F8),
-      appBar: AppBar( // Optional sticky header style for tab
+      appBar: AppBar(
         backgroundColor: const Color(0xFF6950F4),
         elevation: 0,
         automaticallyImplyLeading: false,
         title: const Text(
           'My Portfolio',
-          style: TextStyle(fontFamily: 'Inter', fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white),
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.sort_rounded, color: Colors.white),
-            onPressed: () {},
-          )
+            icon: const Icon(Icons.refresh_rounded, color: Colors.white),
+            // ✅ _loadServices handles its own loading state
+            onPressed: _isLoading ? null : _loadServices,
+          ),
         ],
       ),
-      body: _myServices.isEmpty 
-          ? _buildEmptyState() 
-          : ListView.builder(
-              padding: const EdgeInsets.only(top: 16, bottom: 100, left: 16, right: 16),
-              itemCount: _myServices.length,
-              itemBuilder: (context, index) {
-                return _buildServiceCard(_myServices[index]);
-              },
-            ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _services.isEmpty
+              ? _buildEmptyState()
+              : RefreshIndicator(
+                  onRefresh: _loadServices,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.only(
+                      top: 16,
+                      bottom: 100,
+                      left: 16,
+                      right: 16,
+                    ),
+                    itemCount: _services.length,
+                    itemBuilder: (_, index) =>
+                        _buildServiceCard(_services[index]),
+                  ),
+                ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _openAddService(),
+        backgroundColor: const Color(0xFF6950F4),
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
     );
   }
 
@@ -86,43 +202,62 @@ class _ProviderServicesScreenState extends State<ProviderServicesScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.design_services_outlined, size: 80, color: Colors.black12),
+          const Icon(
+            Icons.design_services_outlined,
+            size: 80,
+            color: Colors.black12,
+          ),
           const SizedBox(height: 16),
-          const Text('No Services Found', style: TextStyle(fontFamily: 'Inter', fontSize: 18, fontWeight: FontWeight.w600, color: Colors.black54)),
+          const Text(
+            'No Services Found',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Colors.black54,
+            ),
+          ),
           const SizedBox(height: 8),
-          const Text('Tap the + button below to add your first service.', style: TextStyle(fontFamily: 'Inter', fontSize: 14, color: Colors.black38)),
+          const Text(
+            'Tap the + button to add your first service.',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 14,
+              color: Colors.black38,
+            ),
+          ),
+          const SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: () => _openAddService(),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF6950F4),
+            ),
+            child: const Text(
+              'Add Service',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildServiceCard(Map<String, dynamic> service) {
-    bool isActive = service['isActive'];
-
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ServiceDetailsScreen(
-              serviceData: service,
-              isProviderPreview: true,
-            ),
-          ),
-        );
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        decoration: BoxDecoration(
+  Widget _buildServiceCard(ProviderServiceRecord service) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: const [
-          BoxShadow(color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 4)),
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
         ],
       ),
       child: Column(
         children: [
-          // Header / Content
           Padding(
             padding: const EdgeInsets.all(12),
             child: Row(
@@ -136,11 +271,14 @@ class _ProviderServicesScreenState extends State<ProviderServicesScreen> {
                     color: const Color(0xFFF5F5F5),
                   ),
                   clipBehavior: Clip.antiAlias,
-                  child: Image.asset(
-                    service['image'],
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.image, color: Colors.black26),
-                  ),
+                  child: service.coverImageUrl == null
+                      ? const Icon(Icons.image, color: Colors.black26)
+                      : Image.network(
+                          service.coverImageUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) =>
+                              const Icon(Icons.image, color: Colors.black26),
+                        ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -148,12 +286,11 @@ class _ProviderServicesScreenState extends State<ProviderServicesScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
                             child: Text(
-                              service['name'],
+                              service.name,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
@@ -165,20 +302,26 @@ class _ProviderServicesScreenState extends State<ProviderServicesScreen> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          // Status Badge
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
-                              color: isActive ? const Color(0xFFE8F5E9) : const Color(0xFFECEFF1),
+                              color: service.isActive
+                                  ? const Color(0xFFE8F5E9)
+                                  : const Color(0xFFECEFF1),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
-                              isActive ? 'ACTIVE' : 'PAUSED',
+                              service.isActive ? 'ACTIVE' : 'PAUSED',
                               style: TextStyle(
                                 fontFamily: 'Inter',
                                 fontSize: 10,
                                 fontWeight: FontWeight.w800,
-                                color: isActive ? const Color(0xFF388E3C) : Colors.black54,
+                                color: service.isActive
+                                    ? const Color(0xFF388E3C)
+                                    : Colors.black54,
                               ),
                             ),
                           ),
@@ -186,54 +329,84 @@ class _ProviderServicesScreenState extends State<ProviderServicesScreen> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        service['category'],
-                        style: const TextStyle(fontFamily: 'Inter', fontSize: 12, color: Colors.black54, fontWeight: FontWeight.w500),
+                        service.categoryName,
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 12,
+                          color: Colors.black54,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                       const SizedBox(height: 10),
                       Row(
                         children: [
                           Text(
-                            '৳${service['price']}',
-                            style: const TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF6950F4)),
+                            'BDT ${_formatPrice(service.offerPrice ?? service.regularPrice)}',
+                            style: const TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF6950F4),
+                            ),
                           ),
-                          const Spacer(),
-                          Icon(Icons.star_rounded, color: Colors.amber[600], size: 16),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${service['rating']} (${service['reviews']})',
-                            style: const TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black87),
-                          )
+                          if (service.offerPrice != null) ...[
+                            const SizedBox(width: 8),
+                            Text(
+                              'BDT ${_formatPrice(service.regularPrice)}',
+                              style: const TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 12,
+                                color: Colors.black38,
+                                decoration: TextDecoration.lineThrough,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
+                      if ((service.durationText ?? '').isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          service.durationText!,
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 12,
+                            color: Colors.black45,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
               ],
             ),
           ),
-          
-          // Action Buttons Divider
           const Divider(height: 1, color: Colors.black12),
-          
-          // Action Buttons
           Row(
             children: [
               Expanded(
                 child: InkWell(
-                  onTap: () {
-                    // Toggle Activate/Pause Logic
-                  },
+                  onTap: () => _toggleActive(service),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(isActive ? Icons.pause_circle_outline_rounded : Icons.play_circle_outline_rounded, 
-                             size: 18, color: Colors.black54),
+                        Icon(
+                          service.isActive
+                              ? Icons.pause_circle_outline_rounded
+                              : Icons.play_circle_outline_rounded,
+                          size: 18,
+                          color: Colors.black54,
+                        ),
                         const SizedBox(width: 6),
                         Text(
-                          isActive ? 'Pause' : 'Activate',
-                          style: const TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black87),
+                          service.isActive ? 'Pause' : 'Activate',
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
                         ),
                       ],
                     ),
@@ -243,22 +416,24 @@ class _ProviderServicesScreenState extends State<ProviderServicesScreen> {
               Container(width: 1, height: 20, color: Colors.black12),
               Expanded(
                 child: InkWell(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => AddServiceScreen(serviceData: service),
-                      ),
-                    );
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  onTap: () => _openAddService(service: service),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Icon(Icons.edit_outlined, size: 18, color: Colors.black54),
+                      children: [
+                        Icon(Icons.edit_outlined,
+                            size: 18, color: Colors.black54),
                         SizedBox(width: 6),
-                        Text('Edit', style: TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black87)),
+                        Text(
+                          'Edit',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -267,17 +442,27 @@ class _ProviderServicesScreenState extends State<ProviderServicesScreen> {
               Container(width: 1, height: 20, color: Colors.black12),
               Expanded(
                 child: InkWell(
-                  onTap: () {
-                    // Delete Logic
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  onTap: () => _deleteService(service),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Icon(Icons.delete_outline_rounded, size: 18, color: Color(0xFFD32F2F)),
+                      children: [
+                        Icon(
+                          Icons.delete_outline_rounded,
+                          size: 18,
+                          color: Color(0xFFD32F2F),
+                        ),
                         SizedBox(width: 6),
-                        Text('Delete', style: TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFD32F2F))),
+                        Text(
+                          'Delete',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFFD32F2F),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -286,8 +471,11 @@ class _ProviderServicesScreenState extends State<ProviderServicesScreen> {
             ],
           ),
         ],
-      ), // closes Column
-    ), // closes child: Container
-    ); // closes return GestureDetector
+      ),
+    );
+  }
+
+  String _formatPrice(double value) {
+    return value % 1 == 0 ? value.toInt().toString() : value.toStringAsFixed(2);
   }
 }

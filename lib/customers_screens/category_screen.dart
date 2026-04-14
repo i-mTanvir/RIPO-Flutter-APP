@@ -28,10 +28,16 @@ class CategoryScreen extends StatelessWidget {
   ];
 
   void _routeToSearch(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const SearchScreen()),
-    );
+    FocusManager.instance.primaryFocus?.unfocus();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await Future<void>.delayed(const Duration(milliseconds: 16));
+      if (!context.mounted) {
+        return;
+      }
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (context) => const SearchScreen()),
+      );
+    });
   }
 
   @override
