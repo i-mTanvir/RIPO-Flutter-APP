@@ -15,18 +15,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   int _selectedNavIndex = 0;
 
   Widget _buildBodyContent() {
-    // Scaffold Body Hub
     return Column(
       children: [
         _buildHeader(),
         Expanded(
           child: _selectedNavIndex == 1 || _selectedNavIndex == 3
-              // Component screens (Users, Offers) have their own padding logic.
               ? Padding(
                   padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
                   child: _buildActiveTabContent())
               : _selectedNavIndex == 4
-                  // Settings/Profile screen manages its own Column + Expanded structure.
                   ? _buildActiveTabContent()
                   : SingleChildScrollView(
                       padding: const EdgeInsets.symmetric(
@@ -153,12 +150,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     String badgeLabel = '',
     bool isLast = false,
   }) {
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Timeline track
-          Column(
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Timeline track
+        SizedBox(
+          width: 32,
+          child: Column(
             children: [
               Container(
                 width: 32,
@@ -169,84 +167,84 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 child: Icon(icon, color: color, size: 16),
               ),
               if (!isLast)
-                Expanded(
-                  child: Container(
-                      width: 1.5, color: Colors.black.withValues(alpha: 0.06)),
+                Container(
+                  width: 1.5,
+                  height: hasBadge ? 80 : 52,
+                  color: Colors.black.withValues(alpha: 0.06),
                 ),
             ],
           ),
-          const SizedBox(width: 12),
-          // Content
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(bottom: isLast ? 0 : 14),
-              child: Container(
-                // Adjusted top/bottom padding to give a sub-pixel safe buffer
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: const [
-                    BoxShadow(
-                        color: Color(0x08000000),
-                        blurRadius: 6,
-                        offset: Offset(0, 3))
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize:
-                      MainAxisSize.min, // <-- FIX: Prevents the 1px overflow
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                  fontFamily: 'Inter',
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.black87)),
-                        ),
-                        Text(time,
+        ),
+        const SizedBox(width: 12),
+        // Content
+        Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(bottom: isLast ? 0 : 14),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: const [
+                  BoxShadow(
+                      color: Color(0x08000000),
+                      blurRadius: 6,
+                      offset: Offset(0, 3))
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                                 fontFamily: 'Inter',
-                                fontSize: 10,
-                                color: Colors.black38)),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(subtitle,
-                        style: const TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 11,
-                            color: Colors.black54)),
-                    if (hasBadge) ...[
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                            color: color.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(6)),
-                        child: Text(badgeLabel,
-                            style: TextStyle(
-                                fontFamily: 'Inter',
-                                fontSize: 9,
-                                fontWeight: FontWeight.w800,
-                                color: color)),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.black87)),
                       ),
+                      const SizedBox(width: 8),
+                      Text(time,
+                          style: const TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 10,
+                              color: Colors.black38)),
                     ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(subtitle,
+                      style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 11,
+                          color: Colors.black54)),
+                  if (hasBadge) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(6)),
+                      child: Text(badgeLabel,
+                          style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                              color: color)),
+                    ),
                   ],
-                ),
+                ],
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -311,7 +309,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Profile and Greeting on Left side
               Row(
                 children: [
                   Container(
@@ -360,8 +357,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   ),
                 ],
               ),
-
-              // Notification on Right side
               IconButton(
                 icon: const Icon(Icons.notifications_rounded,
                     color: Colors.black87, size: 20),
