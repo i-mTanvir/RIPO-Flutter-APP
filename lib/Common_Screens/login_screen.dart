@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:ripo/Common_Screens/forget_password.dart';
 import 'package:ripo/Common_Screens/signup_screen.dart';
 import 'package:ripo/customers_screens/customer_dashboard_screen.dart';
+import 'package:ripo/providers_screens/provider_dashboard_screen.dart';
+import 'package:ripo/admin_screens/admin_dashboard_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -256,11 +258,33 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => const CustomerDashboardScreen()),
-                    );
+                    final email = _emailController.text.trim();
+                    final password = _passwordController.text.trim();
+
+                    Widget? destination;
+
+                    if (email == 'customer@ripo.com' && password == '1234') {
+                      destination = const CustomerDashboardScreen();
+                    } else if (email == 'provider@ripo.com' && password == '1234') {
+                      destination = const ProviderDashboardScreen();
+                    } else if (email == 'admin@ripo.com' && password == '1234') {
+                      destination = const AdminDashboardScreen();
+                    }
+
+                    if (destination != null) {
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(builder: (_) => destination!),
+                        (route) => false,
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Invalid email or password. Try again.'),
+                          backgroundColor: Color(0xFFD32F2F),
+                        ),
+                      );
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF6950F4),

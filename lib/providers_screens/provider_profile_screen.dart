@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ripo/Common_Screens/login_screen.dart';
 import 'package:ripo/customers_screens/chat_list_screen.dart';
 import 'package:ripo/providers_screens/provider_wallet_screen.dart';
 
@@ -46,7 +47,7 @@ class ProviderProfileScreen extends StatelessWidget {
                   const SizedBox(height: 20),
                   _buildMenuCard('Help & Resources', _supportItems),
                   const SizedBox(height: 24),
-                  _buildLogOutButton(),
+                  _buildLogOutButton(context),
                   const SizedBox(height: 40),
                 ],
               ),
@@ -270,12 +271,18 @@ class ProviderProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildLogOutButton() {
+  Widget _buildLogOutButton(BuildContext context) {
     return SizedBox(
       width: double.infinity,
       height: 50,
       child: OutlinedButton(
-        onPressed: () {},
+        onPressed: () {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+            (route) => false,
+          );
+        },
         style: OutlinedButton.styleFrom(
           side: const BorderSide(color: Color(0xFFD32F2F), width: 1.5), // Red border
           shape: RoundedRectangleBorder(
