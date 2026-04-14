@@ -5,6 +5,7 @@ import 'package:ripo/customers_screens/my_booking_screen.dart';
 import 'package:ripo/customers_screens/customer_profile_screen.dart';
 import 'package:ripo/customers_screens/category_screen.dart';
 import 'package:ripo/customers_screens/notification_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class CustomerDashboardScreen extends StatefulWidget {
   const CustomerDashboardScreen({super.key});
@@ -51,29 +52,8 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
     },
   ];
 
-  final List<Map<String, dynamic>> _recommendedServices = [
-    {
-      'name': 'AC Servicing',
-      'discount': '40% OFF',
-      'price': '1,200',
-      'originalPrice': '2,000',
-      'image': 'lib/media/AC_servicing.png',
-    },
-    {
-      'name': 'Electronics Service',
-      'discount': '50% OFF',
-      'price': '800',
-      'originalPrice': '1,600',
-      'image': 'lib/media/electronics_servicing.png',
-    },
-    {
-      'name': 'Fan & Light Service',
-      'discount': '30% OFF',
-      'price': '500',
-      'originalPrice': '700',
-      'image': 'lib/media/fan_light_servicing.png',
-    },
-  ];
+  List<Map<String, dynamic>> _recommendedServices = [];
+  bool _isLoadingRecommended = true;
 
   final List<Map<String, dynamic>> _allServices = [
     {'image': 'lib/media/AC_servicing.png',           'label': 'AC Repair',    'bg': const Color(0xFFE8F4FD)},
@@ -93,6 +73,76 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
     super.initState();
     _offerPageController = PageController();
     _startOfferAutoScroll();
+    _loadRecommendedServices();
+  }
+
+  Future<void> _loadRecommendedServices() async {
+    final client = Supabase.instance.client;
+    try {
+      final servicesResponse = await client
+          .from('services')
+          .select('id, name, regular_price, offer_price, created_at')
+          .order('created_at', ascending: false)
+          .limit(4)
+          .timeout(const Duration(seconds: 12));
+
+      final services = List<Map<String, dynamic>>.from(servicesResponse);
+      final serviceIds = services.map((row) => row['id'] as String).toList();
+
+      Map<String, String> coverImageByServiceId = {};
+      if (serviceIds.isNotEmpty) {
+        final mediaResponse = await client
+            .from('service_media')
+            .select('service_id, file_url, is_cover, sort_order')
+            .inFilter('service_id', serviceIds)
+            .order('is_cover', ascending: false)
+            .order('sort_order', ascending: true)
+            .timeout(const Duration(seconds: 12));
+
+        final mediaRows = List<Map<String, dynamic>>.from(mediaResponse);
+        for (final media in mediaRows) {
+          final serviceId = media['service_id'] as String?;
+          final fileUrl = media['file_url'] as String?;
+          if (serviceId == null || fileUrl == null || fileUrl.isEmpty) continue;
+          coverImageByServiceId.putIfAbsent(serviceId, () => fileUrl);
+        }
+      }
+
+      final mapped = services.map((row) {
+        final regular = (row['regular_price'] as num?)?.toDouble() ?? 0;
+        final offer = (row['offer_price'] as num?)?.toDouble();
+        final hasDiscount = offer != null && offer > 0 && offer < regular;
+        final discountPct = hasDiscount
+            ? (((regular - offer) / regular) * 100).round()
+            : null;
+        final serviceId = row['id'] as String?;
+        final imageUrl =
+            serviceId == null ? '' : (coverImageByServiceId[serviceId] ?? '');
+
+        return <String, dynamic>{
+          'name': (row['name'] as String?) ?? 'Service',
+          'discount': hasDiscount ? '$discountPct% OFF' : 'NEW',
+          'price': hasDiscount ? offer.toInt() : regular.toInt(),
+          'originalPrice': hasDiscount ? regular.toInt() : null,
+          'image': imageUrl,
+        };
+      }).toList();
+
+      if (!mounted) return;
+      setState(() {
+        _recommendedServices = mapped;
+      });
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not load recommended services.')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingRecommended = false);
+      }
+    }
   }
 
   void _startOfferAutoScroll() {
@@ -438,6 +488,36 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
   // ── Recommended Services ─────────────────────────────────────
 
   Widget _buildRecommendedServices() {
+    if (_isLoadingRecommended) {
+      return const SizedBox(
+        height: 200,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_recommendedServices.isEmpty) {
+      return Container(
+        height: 120,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: const [
+            BoxShadow(color: Color(0x0A000000), blurRadius: 8, offset: Offset(0, 4)),
+          ],
+        ),
+        child: const Text(
+          'No services available yet.',
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: Colors.black54,
+          ),
+        ),
+      );
+    }
+
     return SizedBox(
       height: 200,
       child: ListView.builder(
@@ -475,10 +555,18 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
                 height: 110,
                 width: 160,
                 color: const Color(0xFFF9F9F9), // Light bg for transparent images
-                child: Image.asset(
-                  s['image'] as String,
-                  fit: BoxFit.cover,
-                ),
+                child: (s['image'] as String).isNotEmpty
+                    ? Image.network(
+                        s['image'] as String,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Center(
+                          child: Icon(Icons.image_not_supported_outlined,
+                              color: Colors.black26),
+                        ),
+                      )
+                    : const Center(
+                        child: Icon(Icons.image_outlined, color: Colors.black26),
+                      ),
               ),
               Positioned(
                 top: 8,
@@ -533,15 +621,16 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    Text(
-                      '৳ ${s['originalPrice']}',
-                      style: const TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 11,
-                        color: Colors.black38,
-                        decoration: TextDecoration.lineThrough,
+                    if (s['originalPrice'] != null)
+                      Text(
+                        '৳ ${s['originalPrice']}',
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 11,
+                          color: Colors.black38,
+                          decoration: TextDecoration.lineThrough,
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ],

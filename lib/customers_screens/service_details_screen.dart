@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:ripo/customers_screens/booking_schedule.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ServiceDetailsScreen extends StatefulWidget {
   final Map<String, dynamic>? serviceData;
   final bool isProviderPreview;
 
   const ServiceDetailsScreen({
-    super.key, 
-    this.serviceData, 
+    super.key,
+    this.serviceData,
     this.isProviderPreview = false,
   });
 
@@ -17,37 +18,222 @@ class ServiceDetailsScreen extends StatefulWidget {
 
 class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
   int _selectedTabIndex = 0;
+  bool _isLoading = false;
 
-  final List<String> _tabs = [
-    'Overview',
-    'Service Variation',
-    'Review',
-    'FAQs'
-  ];
+  Map<String, dynamic> _resolvedServiceData = <String, dynamic>{};
+  Map<String, dynamic> _providerData = <String, dynamic>{};
+  List<Map<String, dynamic>> _reviews = <Map<String, dynamic>>[];
+
+  final List<String> _tabs = ['Overview', 'Service Variation', 'Review', 'FAQs'];
+
+  Map<String, dynamic> get _displayData {
+    if (widget.isProviderPreview) {
+      return Map<String, dynamic>.from(widget.serviceData ?? const {});
+    }
+    return _resolvedServiceData;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _resolvedServiceData = Map<String, dynamic>.from(widget.serviceData ?? const {});
+    if (!widget.isProviderPreview) {
+      _loadServiceDetailsFromDb();
+    }
+  }
+
+  Future<void> _loadServiceDetailsFromDb() async {
+    final serviceId = widget.serviceData?['id'] as String?;
+    if (serviceId == null || serviceId.isEmpty) {
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    final client = Supabase.instance.client;
+
+    try {
+      final serviceRow = await client
+          .from('services')
+          .select('''
+            id,
+            provider_id,
+            name,
+            description,
+            variations,
+            faqs,
+            duration_text,
+            regular_price,
+            offer_price,
+            service_categories(name),
+            provider_profiles(
+              business_name,
+              owner_name,
+              rating_avg,
+              review_count
+            )
+          ''')
+          .eq('id', serviceId)
+          .maybeSingle();
+
+      if (serviceRow == null) {
+        if (!mounted) return;
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      final mediaRows = await client
+          .from('service_media')
+          .select('file_url, is_cover, sort_order')
+          .eq('service_id', serviceId)
+          .order('is_cover', ascending: false)
+          .order('sort_order', ascending: true);
+
+      final reviewsRows = await client
+          .from('reviews')
+          .select('id, customer_id, rating, comment, created_at')
+          .eq('service_id', serviceId)
+          .order('created_at', ascending: false);
+
+      final media = List<Map<String, dynamic>>.from(mediaRows);
+      final reviews = List<Map<String, dynamic>>.from(reviewsRows);
+
+      final image = media.isEmpty ? '' : (media.first['file_url'] as String? ?? '');
+
+      final customerIds = reviews
+          .map((row) => row['customer_id'] as String?)
+          .whereType<String>()
+          .toSet()
+          .toList();
+
+      final customerNameById = <String, String>{};
+      if (customerIds.isNotEmpty) {
+        final profilesRows = await client
+            .from('profiles')
+            .select('id, full_name')
+            .inFilter('id', customerIds);
+        for (final row in List<Map<String, dynamic>>.from(profilesRows)) {
+          final id = row['id'] as String?;
+          final fullName = (row['full_name'] as String?)?.trim() ?? '';
+          if (id != null) {
+            customerNameById[id] = fullName;
+          }
+        }
+      }
+
+      final providerId = serviceRow['provider_id'] as String?;
+      String providerProfileName = '';
+      if (providerId != null && providerId.isNotEmpty) {
+        final providerProfileRow = await client
+            .from('profiles')
+            .select('full_name')
+            .eq('id', providerId)
+            .maybeSingle();
+        providerProfileName = (providerProfileRow?['full_name'] as String?)?.trim() ?? '';
+      }
+
+      final provider = serviceRow['provider_profiles'] as Map<String, dynamic>? ?? const {};
+      final providerOwner = (provider['owner_name'] as String?)?.trim() ?? '';
+      final providerBusiness = (provider['business_name'] as String?)?.trim() ?? '';
+
+      final providerName = providerOwner.isNotEmpty
+          ? providerOwner
+          : (providerBusiness.isNotEmpty ? providerBusiness : providerProfileName);
+
+      final regular = (serviceRow['regular_price'] as num?)?.toDouble();
+      final offer = (serviceRow['offer_price'] as num?)?.toDouble();
+      final hasDiscount =
+          regular != null && offer != null && regular > 0 && offer > 0 && offer < regular;
+      final discountPct = hasDiscount ? (((regular - offer) / regular) * 100).round() : null;
+
+      final reviewRatings = reviews
+          .map((row) => (row['rating'] as num?)?.toDouble())
+          .whereType<double>()
+          .toList();
+      final serviceRating = reviewRatings.isEmpty
+          ? null
+          : (reviewRatings.reduce((a, b) => a + b) / reviewRatings.length);
+
+      final mappedReviews = reviews.map((row) {
+        final customerId = row['customer_id'] as String?;
+        final rating = (row['rating'] as num?)?.toDouble();
+        final comment = (row['comment'] as String?)?.trim() ?? '';
+        final createdAt = row['created_at'] as String?;
+
+        return <String, dynamic>{
+          'name': customerId == null ? '' : (customerNameById[customerId] ?? ''),
+          'rating': rating,
+          'comment': comment,
+          'createdAt': createdAt,
+        };
+      }).toList();
+
+      final categoryMap = serviceRow['service_categories'] as Map<String, dynamic>?;
+      final categoryName = (categoryMap?['name'] as String?)?.trim() ?? '';
+
+      final resolved = <String, dynamic>{
+        'id': serviceRow['id'],
+        'name': (serviceRow['name'] as String?)?.trim() ?? '',
+        'category': categoryName,
+        'description': (serviceRow['description'] as String?)?.trim() ?? '',
+        'variations': (serviceRow['variations'] as String?)?.trim() ?? '',
+        'faqs': (serviceRow['faqs'] as String?)?.trim() ?? '',
+        'durationText': (serviceRow['duration_text'] as String?)?.trim() ?? '',
+        'price': hasDiscount ? offer.toInt() : regular?.toInt(),
+        'originalPrice': hasDiscount ? regular.toInt() : null,
+        'discount': hasDiscount ? '$discountPct% OFF' : '',
+        'rating': serviceRating,
+        'reviewCount': mappedReviews.length,
+        'image': image.isNotEmpty ? image : (_resolvedServiceData['image'] ?? ''),
+      };
+
+      final providerResolved = <String, dynamic>{
+        'name': providerName,
+        'rating': (provider['rating_avg'] as num?)?.toDouble(),
+        'reviewCount': (provider['review_count'] as num?)?.toInt(),
+      };
+
+      if (!mounted) return;
+      setState(() {
+        _resolvedServiceData = {
+          ..._resolvedServiceData,
+          ...resolved,
+        };
+        _providerData = providerResolved;
+        _reviews = mappedReviews;
+        _isLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    String baseImage = widget.serviceData?['image'] ?? 'lib/media/AC_servicing.png';
+    final baseImage = (_displayData['image'] as String?)?.trim() ?? '';
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: _buildAppBar(),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildImageSlider(baseImage),
-            _buildServiceBasicInfo(),
-            _buildTabSelector(),
-            const SizedBox(height: 16),
-            if (_selectedTabIndex == 0) _buildOverviewSection(),
-            if (_selectedTabIndex == 1) _buildVariationSection(),
-            if (_selectedTabIndex == 2) _buildReviewSection(),
-            if (_selectedTabIndex == 3) _buildFAQSection(),
-            const SizedBox(height: 100), // padding for bottom bar
-          ],
-        ),
-      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildImageSlider(baseImage),
+                  _buildServiceBasicInfo(),
+                  _buildTabSelector(),
+                  const SizedBox(height: 16),
+                  if (_selectedTabIndex == 0) _buildOverviewSection(),
+                  if (_selectedTabIndex == 1) _buildVariationSection(),
+                  if (_selectedTabIndex == 2) _buildReviewSection(),
+                  if (_selectedTabIndex == 3) _buildFAQSection(),
+                  const SizedBox(height: 100),
+                ],
+              ),
+            ),
       bottomNavigationBar: _buildBottomBar(),
     );
   }
@@ -80,8 +266,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
               shape: BoxShape.circle,
             ),
             child: IconButton(
-              icon: const Icon(Icons.favorite_border_rounded,
-                  color: Color(0xFF6950F4), size: 20),
+              icon: const Icon(Icons.favorite_border_rounded, color: Color(0xFF6950F4), size: 20),
               onPressed: () {},
             ),
           ),
@@ -93,16 +278,23 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
               shape: BoxShape.circle,
             ),
             child: IconButton(
-              icon: const Icon(Icons.reply_rounded,
-                  color: Color(0xFFFF9800), size: 20),
+              icon: const Icon(Icons.reply_rounded, color: Color(0xFFFF9800), size: 20),
               onPressed: () {},
             ),
           ),
         ] else ...[
           Container(
-             alignment: Alignment.center,
-             padding: const EdgeInsets.only(right: 16),
-             child: const Text('PREVIEW', style: TextStyle(fontFamily: 'Inter', color: Color(0xFF6950F4), fontWeight: FontWeight.bold, fontSize: 12)),
+            alignment: Alignment.center,
+            padding: const EdgeInsets.only(right: 16),
+            child: const Text(
+              'PREVIEW',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                color: Color(0xFF6950F4),
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+            ),
           )
         ]
       ],
@@ -110,6 +302,10 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
   }
 
   Widget _buildImageSlider(String imageUrl) {
+    final normalized = imageUrl.trim();
+    final isNetwork = normalized.startsWith('http');
+    final hasImage = normalized.isNotEmpty;
+
     return Container(
       height: 220,
       width: double.infinity,
@@ -119,22 +315,41 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
         color: const Color(0xFFF5F5F5),
       ),
       clipBehavior: Clip.antiAlias,
-      child: Image.asset(
-        imageUrl,
-        fit: BoxFit.cover,
-      ),
+      child: !hasImage
+          ? const Center(child: Icon(Icons.image_outlined, color: Colors.black26))
+          : isNetwork
+              ? Image.network(
+                  normalized,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const Center(
+                    child: Icon(Icons.image_not_supported_outlined, color: Colors.black26),
+                  ),
+                )
+              : Image.asset(
+                  normalized,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const Center(
+                    child: Icon(Icons.image_not_supported_outlined, color: Colors.black26),
+                  ),
+                ),
     );
   }
 
   Widget _buildServiceBasicInfo() {
-    final name = widget.serviceData?['name'] ?? 'AC Cooling Problem';
-    final price = widget.serviceData?['price']?.toString() ?? '500';
-    final orgPrice = widget.serviceData?['originalPrice']?.toString() ?? '600';
-    final discount = widget.serviceData?['discount'] ?? '30% OFF';
-    final rating = widget.serviceData?['rating']?.toString() ?? '4.5';
+    final name = (_displayData['name'] as String?)?.trim() ?? '';
+    final category = (_displayData['category'] as String?)?.trim() ?? '';
+    final price = _currencyText(_displayData['price']);
+    final originalPrice = _currencyText(_displayData['originalPrice']);
+    final discount = (_displayData['discount'] as String?)?.trim() ?? '';
+    final duration = (_displayData['durationText'] as String?)?.trim() ?? '';
+
+    final ratingValue = (_displayData['rating'] as num?)?.toDouble();
+    final ratingText = ratingValue == null ? '' : ratingValue.toStringAsFixed(1);
+    final reviewCount = (_displayData['reviewCount'] as num?)?.toInt();
+    final reviewText = reviewCount == null ? '' : '($reviewCount Reviews)';
 
     return Padding(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -148,9 +363,9 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
             ),
           ),
           const SizedBox(height: 4),
-          const Text(
-            'AC Repair', // Mock category
-            style: TextStyle(
+          Text(
+            category,
+            style: const TextStyle(
               fontFamily: 'Inter',
               fontSize: 14,
               color: Colors.black54,
@@ -163,53 +378,55 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
               Row(
                 children: [
                   Text(
-                    '৳ $price',
+                    price,
                     style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF6950F4), // Purple price
+                      color: Color(0xFF6950F4),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '৳ $orgPrice',
-                    style: const TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.black38,
-                      decoration: TextDecoration.lineThrough,
+                  if (originalPrice.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    Text(
+                      originalPrice,
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black38,
+                        decoration: TextDecoration.lineThrough,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFF1F1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  discount,
-                  style: const TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFFD32F2F),
+              if (discount.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF1F1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    discount,
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFFD32F2F),
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Duration: 30 min',
-                style: TextStyle(
+              Text(
+                duration.isEmpty ? '' : 'Duration: $duration',
+                style: const TextStyle(
                   fontFamily: 'Inter',
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
@@ -221,7 +438,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                   const Icon(Icons.star_rounded, color: Colors.amber, size: 18),
                   const SizedBox(width: 4),
                   Text(
-                    rating,
+                    ratingText,
                     style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 14,
@@ -229,31 +446,18 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                       color: Colors.black87,
                     ),
                   ),
-                  const Text(
-                    ' (10 Reviews)',
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 14,
-                      color: Colors.black54,
+                  if (reviewText.isNotEmpty) ...[
+                    const SizedBox(width: 4),
+                    Text(
+                      reviewText,
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 14,
+                        color: Colors.black54,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: const [
-              Icon(Icons.location_on_outlined, color: Colors.black54, size: 18),
-              SizedBox(width: 4),
-              Text(
-                'Distance: 2.5 km away',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black54,
-                ),
               ),
             ],
           ),
@@ -270,7 +474,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         itemCount: _tabs.length,
         itemBuilder: (context, index) {
-          bool isSelected = _selectedTabIndex == index;
+          final isSelected = _selectedTabIndex == index;
           return GestureDetector(
             onTap: () => setState(() => _selectedTabIndex = index),
             child: Container(
@@ -301,6 +505,14 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
   }
 
   Widget _buildOverviewSection() {
+    final description = (_displayData['description'] as String?)?.trim() ?? '';
+    final providerName = (_providerData['name'] as String?)?.trim() ?? '';
+    final providerRating = (_providerData['rating'] as num?)?.toDouble();
+    final providerRatingText = providerRating == null ? '' : providerRating.toStringAsFixed(1);
+    final providerReviewCount = (_providerData['reviewCount'] as num?)?.toInt();
+    final providerReviewText =
+        providerReviewCount == null ? '' : '($providerReviewCount Reviews)';
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -316,26 +528,13 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
             ),
           ),
           const SizedBox(height: 10),
-          RichText(
-            text: const TextSpan(
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 14,
-                height: 1.5,
-                color: Colors.black54,
-              ),
-              children: [
-                TextSpan(
-                    text:
-                        'Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry\'s standard dummy text ever since the 1500s... '),
-                TextSpan(
-                  text: 'Read More v',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF6950F4),
-                  ),
-                ),
-              ],
+          Text(
+            description,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 14,
+              height: 1.5,
+              color: Colors.black54,
             ),
           ),
           const SizedBox(height: 24),
@@ -372,65 +571,56 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                     color: Color(0xFFE8F4FD),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.person_rounded,
-                      color: Color(0xFF6950F4)), // Avatar placeholder
+                  child: const Icon(Icons.person_rounded, color: Color(0xFF6950F4)),
                 ),
                 const SizedBox(width: 14),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Shaidul Islam',
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: const [
-                        Icon(Icons.star_rounded, color: Colors.amber, size: 16),
-                        SizedBox(width: 4),
-                        Text(
-                          '4.5 (10 Reviews)',
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 13,
-                            color: Colors.black54,
-                          ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        providerName,
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black87,
                         ),
-                      ],
-                    ),
-                  ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(Icons.star_rounded, color: Colors.amber, size: 16),
+                          const SizedBox(width: 4),
+                          Text(
+                            providerRatingText,
+                            style: const TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 13,
+                              color: Colors.black54,
+                            ),
+                          ),
+                          if (providerReviewText.isNotEmpty) ...[
+                            const SizedBox(width: 4),
+                            Text(
+                              providerReviewText,
+                              style: const TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 13,
+                                color: Colors.black54,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-                const Spacer(),
                 IconButton(
-                  icon: const Icon(Icons.chat_bubble_outline_rounded,
-                      color: Color(0xFF6950F4)),
+                  icon: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF6950F4)),
                   onPressed: () {},
-                )
+                ),
               ],
-            ),
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            'Extra Service',
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Select the one which you need.',
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 14,
-              color: Colors.black54,
             ),
           ),
         ],
@@ -439,12 +629,13 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
   }
 
   Widget _buildVariationSection() {
+    final variations = (_displayData['variations'] as String?)?.trim() ?? '';
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          Text(
+        children: [
+          const Text(
             'Available Variations',
             style: TextStyle(
               fontFamily: 'Inter',
@@ -452,10 +643,10 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
               fontWeight: FontWeight.bold,
             ),
           ),
-          SizedBox(height: 10),
+          const SizedBox(height: 10),
           Text(
-            '• Standard AC Maintenance\n• Deep Chemical Cleaning\n• Filter Replacement Package',
-            style: TextStyle(
+            variations,
+            style: const TextStyle(
               fontFamily: 'Inter',
               color: Colors.black54,
               height: 1.5,
@@ -468,12 +659,13 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
   }
 
   Widget _buildFAQSection() {
+    final faqs = (_displayData['faqs'] as String?)?.trim() ?? '';
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          Text(
+        children: [
+          const Text(
             'Frequently Asked Questions',
             style: TextStyle(
               fontFamily: 'Inter',
@@ -481,10 +673,10 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
               fontWeight: FontWeight.bold,
             ),
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           Text(
-            '1. How long does the service take?\nTypically 30-45 minutes depending on the scale.\n\n2. Are parts/components included in the price?\nNo, additional parts are charged separately.',
-            style: TextStyle(
+            faqs,
+            style: const TextStyle(
               fontFamily: 'Inter',
               color: Colors.black54,
               height: 1.5,
@@ -511,18 +703,37 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          _buildReviewCard('Tanvir', '2 days ago', '5.0',
-              'Great service! The technician was extremely polite and solved the core issue perfectly on-time.'),
-          const Divider(),
-          _buildReviewCard('John Doe', '1 week ago', '4.0',
-              'Service was reliable and they cleaned up nicely afterward. Would definitely use this platform again.'),
+          ..._reviews.asMap().entries.map((entry) {
+            final index = entry.key;
+            final review = entry.value;
+            final name = (review['name'] as String?)?.trim() ?? '';
+            final rating = (review['rating'] as num?)?.toDouble();
+            final comment = (review['comment'] as String?)?.trim() ?? '';
+            final createdAt = (review['createdAt'] as String?)?.trim() ?? '';
+            return Column(
+              children: [
+                _buildReviewCard(
+                  name: name,
+                  time: _formatReviewTime(createdAt),
+                  rating: rating == null ? '' : rating.toStringAsFixed(1),
+                  text: comment,
+                ),
+                if (index != _reviews.length - 1) const Divider(),
+              ],
+            );
+          }),
         ],
       ),
     );
   }
 
-  Widget _buildReviewCard(
-      String name, String time, String rating, String text) {
+  Widget _buildReviewCard({
+    required String name,
+    required String time,
+    required String rating,
+    required String text,
+  }) {
+    final initial = name.isEmpty ? '' : name[0].toUpperCase();
     return Container(
       margin: const EdgeInsets.only(bottom: 16, top: 8),
       child: Column(
@@ -533,33 +744,33 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
               CircleAvatar(
                 backgroundColor: const Color(0xFFEDE9FF),
                 child: Text(
-                  name[0],
-                  style: const TextStyle(
-                      color: Color(0xFF6950F4), fontWeight: FontWeight.bold),
+                  initial,
+                  style: const TextStyle(color: Color(0xFF6950F4), fontWeight: FontWeight.bold),
                 ),
               ),
               const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name,
-                    style: const TextStyle(
-                      fontFamily: 'Inter',
-                      fontWeight: FontWeight.w600,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                  Text(
-                    time,
-                    style: const TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 12,
-                      color: Colors.black45,
+                    Text(
+                      time,
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 12,
+                        color: Colors.black45,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-              const Spacer(),
               Row(
                 children: [
                   const Icon(Icons.star_rounded, color: Colors.amber, size: 18),
@@ -572,7 +783,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                     ),
                   ),
                 ],
-              )
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -604,22 +815,26 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
       ),
       child: SafeArea(
         child: ElevatedButton(
-          onPressed: widget.isProviderPreview 
-            ? () { Navigator.pop(context); } 
-            : () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => BookingScheduleScreen(serviceData: widget.serviceData),
-                  ),
-                );
-              },
+          onPressed: widget.isProviderPreview
+              ? () {
+                  Navigator.pop(context);
+                }
+              : () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => BookingScheduleScreen(serviceData: _displayData),
+                    ),
+                  );
+                },
           style: ElevatedButton.styleFrom(
             backgroundColor: widget.isProviderPreview ? Colors.white : const Color(0xFF6950F4),
             minimumSize: const Size(double.infinity, 54),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(28),
-              side: widget.isProviderPreview ? const BorderSide(color: Color(0xFF6950F4), width: 2) : BorderSide.none,
+              side: widget.isProviderPreview
+                  ? const BorderSide(color: Color(0xFF6950F4), width: 2)
+                  : BorderSide.none,
             ),
             elevation: 0,
           ),
@@ -635,5 +850,28 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
         ),
       ),
     );
+  }
+
+  String _currencyText(dynamic value) {
+    if (value == null) return '';
+    return 'BDT $value';
+  }
+
+  String _formatReviewTime(String rawDate) {
+    if (rawDate.isEmpty) return '';
+    final parsed = DateTime.tryParse(rawDate);
+    if (parsed == null) return '';
+
+    final diff = DateTime.now().difference(parsed);
+    if (diff.inDays >= 1) {
+      return '${diff.inDays} day${diff.inDays == 1 ? '' : 's'} ago';
+    }
+    if (diff.inHours >= 1) {
+      return '${diff.inHours} hour${diff.inHours == 1 ? '' : 's'} ago';
+    }
+    if (diff.inMinutes >= 1) {
+      return '${diff.inMinutes} min ago';
+    }
+    return 'just now';
   }
 }
