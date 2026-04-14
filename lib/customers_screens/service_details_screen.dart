@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ripo/customers_screens/booking_schedule.dart';
+import 'package:ripo/customers_screens/chat_detail_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ServiceDetailsScreen extends StatefulWidget {
@@ -620,7 +621,21 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                 ),
                 IconButton(
                   icon: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF6950F4)),
-                  onPressed: () {},
+                  onPressed: () {
+                    final providerName = ((_providerData['name'] as String?)?.trim() ??
+                            (_displayData['providerName'] as String?)?.trim() ??
+                            '')
+                        .trim();
+                    if (providerName.isEmpty) {
+                      return;
+                    }
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ChatDetailScreen(providerName: providerName),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
