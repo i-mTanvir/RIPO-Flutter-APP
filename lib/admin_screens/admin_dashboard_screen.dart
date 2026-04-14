@@ -181,7 +181,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             child: Padding(
               padding: EdgeInsets.only(bottom: isLast ? 0 : 14),
               child: Container(
-                padding: const EdgeInsets.fromLTRB(12, 9, 12, 9),
+                // Adjusted top/bottom padding to give a sub-pixel safe buffer
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
@@ -194,6 +195,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize:
+                      MainAxisSize.min, // <-- FIX: Prevents the 1px overflow
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
