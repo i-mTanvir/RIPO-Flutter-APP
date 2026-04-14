@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:ripo/customers_screens/search_screen.dart';
 import 'package:ripo/customers_screens/my_booking_screen.dart';
 import 'package:ripo/customers_screens/customer_profile_screen.dart';
-import 'package:ripo/customers_screens/category_screen.dart';
+import 'package:ripo/customers_screens/customer_services_screen.dart';
 import 'package:ripo/customers_screens/notification_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -200,7 +200,7 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF4F4F8),
       body: _selectedNavIndex == 1
-          ? CategoryScreen()
+          ? const CustomerServicesScreen()
           : _selectedNavIndex == 2
               ? MyBookingScreen()
               : _selectedNavIndex == 3
@@ -751,7 +751,7 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             _buildNavItem(icon: Icons.home_rounded, label: 'Home', index: 0),
-            _buildNavItem(icon: Icons.grid_view_rounded, label: 'Category', index: 1),
+            _buildNavItem(icon: Icons.grid_view_rounded, label: 'Services', index: 1),
             const SizedBox(width: 40), // Reduced space for smaller FAB
             _buildNavItem(icon: Icons.calendar_month_outlined, label: 'Booking', index: 2),
             _buildNavItem(icon: Icons.person_outline_rounded, label: 'Profile', index: 3),
