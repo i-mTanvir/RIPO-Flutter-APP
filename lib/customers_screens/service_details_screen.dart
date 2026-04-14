@@ -189,9 +189,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
       // Check if service is favorited by current user
       bool isFavorite = false;
       final currentUserId = client.auth.currentSession?.user.id;
-      if (currentUserId != null &&
-          currentUserId.isNotEmpty &&
-          serviceId != null) {
+      if (currentUserId != null && currentUserId.isNotEmpty) {
         final favoriteCheck = await client
             .from('favorites')
             .select('id')
