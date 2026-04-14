@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ProviderJobsScreen extends StatefulWidget {
   const ProviderJobsScreen({super.key});
@@ -10,11 +11,15 @@ class ProviderJobsScreen extends StatefulWidget {
 class _ProviderJobsScreenState extends State<ProviderJobsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  bool _isLoading = true;
+  String? _updatingBookingId;
+  List<Map<String, dynamic>> _jobs = <Map<String, dynamic>>[];
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _loadJobs();
   }
 
   @override
@@ -23,7 +28,174 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
     super.dispose();
   }
 
-  // ── Build ────────────────────────────────────────────────────────────────
+  Future<void> _loadJobs() async {
+    final client = Supabase.instance.client;
+    final providerId = client.auth.currentUser?.id;
+    if (providerId == null) {
+      if (!mounted) return;
+      setState(() {
+        _jobs = <Map<String, dynamic>>[];
+        _isLoading = false;
+      });
+      return;
+    }
+
+    if (mounted) setState(() => _isLoading = true);
+
+    try {
+      final rows = await client
+          .from('bookings')
+          .select('''
+            id,
+            booking_code,
+            booking_date,
+            time_slot_text,
+            total_amount,
+            booking_status,
+            customer_id,
+            created_at,
+            locations(address_line, area, city),
+            services(name)
+          ''')
+          .eq('provider_id', providerId)
+          .order('created_at', ascending: false);
+
+      final bookings = List<Map<String, dynamic>>.from(rows);
+      final customerIds = bookings
+          .map((r) => r['customer_id'] as String?)
+          .whereType<String>()
+          .toSet()
+          .toList();
+
+      final customerNameById = <String, String>{};
+      if (customerIds.isNotEmpty) {
+        final profileRows = await client
+            .from('profiles')
+            .select('id, full_name')
+            .inFilter('id', customerIds);
+        for (final p in List<Map<String, dynamic>>.from(profileRows)) {
+          final id = p['id'] as String?;
+          final name = (p['full_name'] as String?)?.trim() ?? '';
+          if (id != null) customerNameById[id] = name;
+        }
+      }
+
+      final mapped = bookings.map((row) {
+        final serviceMap = row['services'] as Map<String, dynamic>?;
+        final locationMap = row['locations'] as Map<String, dynamic>?;
+        final customerId = row['customer_id'] as String?;
+        final amount = (row['total_amount'] as num?)?.toDouble() ?? 0;
+        final addressLine = (locationMap?['address_line'] as String?)?.trim() ?? '';
+        final area = (locationMap?['area'] as String?)?.trim() ?? '';
+        final city = (locationMap?['city'] as String?)?.trim() ?? '';
+
+        return <String, dynamic>{
+          'id': row['id'],
+          'bookingCode': (row['booking_code'] as String?)?.trim() ?? '',
+          'statusRaw': (row['booking_status'] as String?)?.trim() ?? 'pending',
+          'customerName': customerId == null ? '' : (customerNameById[customerId] ?? ''),
+          'serviceName': (serviceMap?['name'] as String?)?.trim() ?? '',
+          'address': [addressLine, area, city].where((e) => e.isNotEmpty).join(', '),
+          'date': _formatBookingDate(
+            (row['booking_date'] as String?)?.trim() ?? '',
+            (row['time_slot_text'] as String?)?.trim() ?? '',
+          ),
+          'price': amount % 1 == 0 ? amount.toStringAsFixed(0) : amount.toStringAsFixed(2),
+        };
+      }).toList();
+
+      if (!mounted) return;
+      setState(() {
+        _jobs = mapped;
+        _isLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not load jobs.')),
+      );
+    }
+  }
+
+  Future<void> _updateBookingStatus({
+    required String bookingId,
+    required String status,
+  }) async {
+    if (_updatingBookingId != null) return;
+    final client = Supabase.instance.client;
+    final providerId = client.auth.currentUser?.id;
+    if (providerId == null) return;
+
+    setState(() => _updatingBookingId = bookingId);
+    try {
+      await client
+          .from('bookings')
+          .update({'booking_status': status}).eq('id', bookingId);
+      await client.from('booking_status_history').insert({
+        'booking_id': bookingId,
+        'status': status,
+        'changed_by': providerId,
+        'note': 'Status updated by provider.',
+      });
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Job ${_prettyStatus(status)}.')),
+      );
+      await _loadJobs();
+    } on PostgrestException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not update booking status.')),
+      );
+    } finally {
+      if (mounted) setState(() => _updatingBookingId = null);
+    }
+  }
+
+  String _formatBookingDate(String bookingDate, String slot) {
+    if (bookingDate.isEmpty && slot.isEmpty) return '';
+    final dt = DateTime.tryParse(bookingDate);
+    if (dt == null) return '$bookingDate ${slot.isEmpty ? '' : '- $slot'}'.trim();
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final dateText = '${dt.day} ${months[dt.month - 1]} ${dt.year}';
+    return slot.isEmpty ? dateText : '$dateText, $slot';
+  }
+
+  String _prettyStatus(String raw) {
+    switch (raw) {
+      case 'pending':
+        return 'Pending';
+      case 'accepted':
+        return 'Accepted';
+      case 'in_progress':
+        return 'In Progress';
+      case 'completed':
+        return 'Completed';
+      case 'rejected':
+        return 'Rejected';
+      case 'cancelled':
+        return 'Cancelled';
+      default:
+        return 'Pending';
+    }
+  }
+
+  List<Map<String, dynamic>> get _requestJobs =>
+      _jobs.where((j) => (j['statusRaw'] as String) == 'pending').toList();
+
+  List<Map<String, dynamic>> get _activeJobs => _jobs
+      .where((j) => ['accepted', 'in_progress'].contains(j['statusRaw'] as String))
+      .toList();
+
+  List<Map<String, dynamic>> get _completedJobs => _jobs
+      .where((j) => ['completed', 'rejected', 'cancelled'].contains(j['statusRaw'] as String))
+      .toList();
 
   @override
   Widget build(BuildContext context) {
@@ -32,62 +204,61 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
         _buildHeader(),
         _buildTabBar(),
         Expanded(
-          child: TabBarView(
-            controller: _tabController,
-            children: [
-              _buildRequestsTab(),
-              _buildActiveTab(),
-              _buildCompletedTab(),
-            ],
-          ),
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildRequestsTab(),
+                    _buildActiveTab(),
+                    _buildCompletedTab(),
+                  ],
+                ),
         ),
       ],
     );
   }
 
-  // ── Header ───────────────────────────────────────────────────────────────
-
   Widget _buildHeader() {
     return Container(
       width: double.infinity,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-      ),
+      color: Colors.white,
       child: SafeArea(
         bottom: false,
-        child: const Padding(
-          padding: EdgeInsets.fromLTRB(16, 24, 16, 16),
-          child: Text(
-            'Job Management',
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: Colors.black87,
-            ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
+          child: Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Job Management',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.black87,
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: _loadJobs,
+                icon: const Icon(Icons.refresh_rounded),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
-
-  // ── Tab Bar ──────────────────────────────────────────────────────────────
 
   Widget _buildTabBar() {
     return Container(
       color: Colors.white,
       child: TabBar(
         controller: _tabController,
-        labelStyle: const TextStyle(
-          fontFamily: 'Inter',
-          fontSize: 14,
-          fontWeight: FontWeight.w700,
-        ),
-        unselectedLabelStyle: const TextStyle(
-          fontFamily: 'Inter',
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-        ),
+        labelStyle: const TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w700),
+        unselectedLabelStyle:
+            const TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w500),
         labelColor: const Color(0xFF6950F4),
         unselectedLabelColor: Colors.black45,
         indicatorColor: const Color(0xFF6950F4),
@@ -101,111 +272,129 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
     );
   }
 
-  // ── Tabs content ─────────────────────────────────────────────────────────
-
   Widget _buildRequestsTab() {
-    return ListView(
+    if (_requestJobs.isEmpty) return _buildEmpty('No pending requests.');
+    return ListView.builder(
       padding: const EdgeInsets.all(16),
-      children: [
-        _buildJobCard(
-          status: 'Pending Request',
-          statusColor: const Color(0xFFFF8F00),
-          statusBgColor: const Color(0xFFFFF3E0),
-          name: 'Hasan Ali',
-          service: 'Water Filter Installation',
-          address: 'Gulshan 2, Dhaka',
-          date: 'Tomorrow, 3:00 PM',
-          price: '850',
-          avatar: Icons.person,
-          actionButtons: _buildActionButtons(
-            negativeLabel: 'Decline',
-            positiveLabel: 'Accept',
-            onNegative: () {},
-            onPositive: () {},
+      itemCount: _requestJobs.length,
+      itemBuilder: (_, i) {
+        final j = _requestJobs[i];
+        final bookingId = j['id'] as String;
+        final isUpdating = _updatingBookingId == bookingId;
+        return Padding(
+          padding: EdgeInsets.only(bottom: i == _requestJobs.length - 1 ? 0 : 16),
+          child: _buildJobCard(
+            status: 'Pending Request',
+            statusColor: const Color(0xFFFF8F00),
+            statusBgColor: const Color(0xFFFFF3E0),
+            name: (j['customerName'] as String).isEmpty ? 'Customer' : j['customerName'] as String,
+            service: j['serviceName'] as String,
+            address: (j['address'] as String).isEmpty ? 'Address not provided' : j['address'] as String,
+            date: j['date'] as String,
+            price: j['price'] as String,
+            showContactOptions: false,
+            actionButtons: _buildActionButtons(
+              negativeLabel: 'Decline',
+              positiveLabel: 'Accept',
+              onNegative: isUpdating
+                  ? null
+                  : () => _updateBookingStatus(bookingId: bookingId, status: 'rejected'),
+              onPositive: isUpdating
+                  ? null
+                  : () => _updateBookingStatus(bookingId: bookingId, status: 'accepted'),
+            ),
           ),
-        ),
-        const SizedBox(height: 16),
-        _buildJobCard(
-          status: 'Pending Request',
-          statusColor: const Color(0xFFFF8F00),
-          statusBgColor: const Color(0xFFFFF3E0),
-          name: 'Nadia Rahman',
-          service: 'Plumbing Service',
-          address: 'Banani, Dhaka',
-          date: '15 Apr, 10:00 AM',
-          price: '1,500',
-          avatar: Icons.person_4,
-          actionButtons: _buildActionButtons(
-            negativeLabel: 'Decline',
-            positiveLabel: 'Accept',
-            onNegative: () {},
-            onPositive: () {},
-          ),
-        ),
-      ],
+        );
+      },
     );
   }
 
   Widget _buildActiveTab() {
-    return ListView(
+    if (_activeJobs.isEmpty) return _buildEmpty('No active jobs.');
+    return ListView.builder(
       padding: const EdgeInsets.all(16),
-      children: [
-        _buildJobCard(
-          status: 'In Progress',
-          statusColor: const Color(0xFF1E88E5),
-          statusBgColor: const Color(0xFFE8F4FD),
-          name: 'Arif Hossain',
-          service: 'TV Repairing Service',
-          address: 'Sector 11, Uttara',
-          date: 'Today, 11:00 AM - 12:30 PM',
-          price: '1,200',
-          avatar: Icons.person_2,
-          showContactOptions: true,
-          actionButtons: _buildActionButtons(
-            negativeLabel: 'Cancel Job',
-            positiveLabel: 'Mark Completed',
-            onNegative: () {},
-            onPositive: () {},
+      itemCount: _activeJobs.length,
+      itemBuilder: (_, i) {
+        final j = _activeJobs[i];
+        final bookingId = j['id'] as String;
+        final isUpdating = _updatingBookingId == bookingId;
+        final statusRaw = j['statusRaw'] as String;
+        return Padding(
+          padding: EdgeInsets.only(bottom: i == _activeJobs.length - 1 ? 0 : 16),
+          child: _buildJobCard(
+            status: statusRaw == 'accepted' ? 'Accepted' : 'In Progress',
+            statusColor: const Color(0xFF1E88E5),
+            statusBgColor: const Color(0xFFE8F4FD),
+            name: (j['customerName'] as String).isEmpty ? 'Customer' : j['customerName'] as String,
+            service: j['serviceName'] as String,
+            address: (j['address'] as String).isEmpty ? 'Address not provided' : j['address'] as String,
+            date: j['date'] as String,
+            price: j['price'] as String,
+            showContactOptions: true,
+            actionButtons: _buildActionButtons(
+              negativeLabel: 'Cancel Job',
+              positiveLabel: statusRaw == 'accepted' ? 'Start Job' : 'Mark Completed',
+              onNegative: isUpdating
+                  ? null
+                  : () => _updateBookingStatus(bookingId: bookingId, status: 'cancelled'),
+              onPositive: isUpdating
+                  ? null
+                  : () => _updateBookingStatus(
+                        bookingId: bookingId,
+                        status: statusRaw == 'accepted' ? 'in_progress' : 'completed',
+                      ),
+            ),
           ),
-        ),
-      ],
+        );
+      },
     );
   }
 
   Widget _buildCompletedTab() {
-    return ListView(
+    if (_completedJobs.isEmpty) return _buildEmpty('No completed/rejected jobs yet.');
+    return ListView.builder(
       padding: const EdgeInsets.all(16),
-      children: [
-        _buildJobCard(
-          status: 'Completed',
-          statusColor: const Color(0xFF43A047),
-          statusBgColor: const Color(0xFFE8F5E9),
-          name: 'Selim Reza',
-          service: 'AC Servicing',
-          address: 'Mirpur 10, Dhaka',
-          date: '10 Apr, 4:00 PM',
-          price: '2,500',
-          avatar: Icons.person,
-          isCompleted: true,
-        ),
-        const SizedBox(height: 16),
-        _buildJobCard(
-          status: 'Completed',
-          statusColor: const Color(0xFF43A047),
-          statusBgColor: const Color(0xFFE8F5E9),
-          name: 'Sumaiya Akter',
-          service: 'House Cleaning',
-          address: 'Dhanmondi 27',
-          date: '08 Apr, 9:00 AM',
-          price: '1,800',
-          avatar: Icons.person_3,
-          isCompleted: true,
-        ),
-      ],
+      itemCount: _completedJobs.length,
+      itemBuilder: (_, i) {
+        final j = _completedJobs[i];
+        final statusRaw = j['statusRaw'] as String;
+        final isCompleted = statusRaw == 'completed';
+        final statusColor = isCompleted
+            ? const Color(0xFF43A047)
+            : const Color(0xFFE74C3C);
+        final statusBgColor = isCompleted
+            ? const Color(0xFFE8F5E9)
+            : const Color(0xFFFADBD8);
+        return Padding(
+          padding: EdgeInsets.only(bottom: i == _completedJobs.length - 1 ? 0 : 16),
+          child: _buildJobCard(
+            status: _prettyStatus(statusRaw),
+            statusColor: statusColor,
+            statusBgColor: statusBgColor,
+            name: (j['customerName'] as String).isEmpty ? 'Customer' : j['customerName'] as String,
+            service: j['serviceName'] as String,
+            address: (j['address'] as String).isEmpty ? 'Address not provided' : j['address'] as String,
+            date: j['date'] as String,
+            price: j['price'] as String,
+            isCompleted: isCompleted,
+          ),
+        );
+      },
     );
   }
 
-  // ── Job Card ─────────────────────────────────────────────────────────────
+  Widget _buildEmpty(String text) {
+    return Center(
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontFamily: 'Inter',
+          fontSize: 14,
+          color: Colors.black45,
+        ),
+      ),
+    );
+  }
 
   Widget _buildJobCard({
     required String status,
@@ -216,7 +405,6 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
     required String address,
     required String date,
     required String price,
-    required IconData avatar,
     bool showContactOptions = false,
     bool isCompleted = false,
     Widget? actionButtons,
@@ -227,14 +415,12 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: const [
-          BoxShadow(
-              color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 4)),
+          BoxShadow(color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 4)),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header: Status and Price
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -255,7 +441,7 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
                 ),
               ),
               Text(
-                '৳ $price',
+                'BDT $price',
                 style: const TextStyle(
                   fontFamily: 'Inter',
                   fontSize: 18,
@@ -266,8 +452,6 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
             ],
           ),
           const SizedBox(height: 16),
-
-          // User Info
           Row(
             children: [
               Container(
@@ -277,7 +461,7 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
                   color: Color(0xFFE8F4FD),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(avatar, color: const Color(0xFF1E88E5), size: 26),
+                child: const Icon(Icons.person, color: Color(0xFF1E88E5), size: 26),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -319,42 +503,50 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
           const SizedBox(height: 16),
           const Divider(color: Colors.black12, height: 1),
           const SizedBox(height: 16),
-
-          // Details
           Row(
             children: [
-               const Icon(Icons.location_on_rounded, size: 16, color: Colors.black38),
-               const SizedBox(width: 8),
-               Text(address, style: const TextStyle(fontFamily: 'Inter', fontSize: 13, color: Colors.black54)),
+              const Icon(Icons.location_on_rounded, size: 16, color: Colors.black38),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  address,
+                  style: const TextStyle(fontFamily: 'Inter', fontSize: 13, color: Colors.black54),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 8),
           Row(
             children: [
-               const Icon(Icons.calendar_month_rounded, size: 16, color: Colors.black38),
-               const SizedBox(width: 8),
-               Text(date, style: const TextStyle(fontFamily: 'Inter', fontSize: 13, color: Colors.black54)),
+              const Icon(Icons.calendar_month_rounded, size: 16, color: Colors.black38),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  date,
+                  style: const TextStyle(fontFamily: 'Inter', fontSize: 13, color: Colors.black54),
+                ),
+              ),
             ],
           ),
-
-          // Action Buttons
           if (actionButtons != null) ...[
             const SizedBox(height: 20),
             actionButtons,
           ],
-
-          // Completed Note
           if (isCompleted) ...[
             const SizedBox(height: 16),
-            Row(
+            const Row(
               children: [
-                const Icon(Icons.check_circle_rounded, size: 16, color: Color(0xFF43A047)),
-                const SizedBox(width: 6),
-                const Text('Payment Received', style: TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF43A047))),
-                const Spacer(),
-                const Icon(Icons.star_rounded, size: 16, color: Color(0xFFFF8F00)),
-                const SizedBox(width: 4),
-                const Text('5.0', style: TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w700, color: Colors.black87)),
+                Icon(Icons.check_circle_rounded, size: 16, color: Color(0xFF43A047)),
+                SizedBox(width: 6),
+                Text(
+                  'Payment Received',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF43A047),
+                  ),
+                ),
               ],
             )
           ]
@@ -378,8 +570,8 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
   Widget _buildActionButtons({
     required String negativeLabel,
     required String positiveLabel,
-    required VoidCallback onNegative,
-    required VoidCallback onPositive,
+    required VoidCallback? onNegative,
+    required VoidCallback? onPositive,
   }) {
     return Row(
       children: [
@@ -391,7 +583,15 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               padding: const EdgeInsets.symmetric(vertical: 14),
             ),
-            child: Text(negativeLabel, style: const TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFFFF5252))),
+            child: Text(
+              negativeLabel,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFFFF5252),
+              ),
+            ),
           ),
         ),
         const SizedBox(width: 12),
@@ -404,7 +604,15 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               padding: const EdgeInsets.symmetric(vertical: 14),
             ),
-            child: Text(positiveLabel, style: const TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
+            child: Text(
+              positiveLabel,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
           ),
         ),
       ],

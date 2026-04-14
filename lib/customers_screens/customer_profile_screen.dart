@@ -16,7 +16,6 @@ class CustomerProfileScreen extends StatefulWidget {
 class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
   String _userFullName = 'Loading...';
   String _userEmail = 'Loading...';
-  bool _isLoading = true;
 
   final List<Map<String, dynamic>> _generalItems = [
     {'icon': Icons.person, 'label': 'My Profile'},
@@ -49,8 +48,6 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
     final client = Supabase.instance.client;
     final userId = client.auth.currentUser?.id;
     if (userId == null) {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
       return;
     }
 
@@ -67,13 +64,11 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
         setState(() {
           _userFullName = (profile['full_name'] as String?)?.trim() ?? 'User';
           _userEmail = (profile['email'] as String?)?.trim() ?? '';
-          _isLoading = false;
         });
       } else {
         setState(() {
           _userFullName = 'User';
           _userEmail = '';
-          _isLoading = false;
         });
       }
     } catch (e) {
@@ -81,7 +76,6 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
         setState(() {
           _userFullName = 'User';
           _userEmail = '';
-          _isLoading = false;
         });
       }
     }

@@ -173,6 +173,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
 
       final resolved = <String, dynamic>{
         'id': serviceRow['id'],
+        'providerId': providerId ?? '',
         'name': (serviceRow['name'] as String?)?.trim() ?? '',
         'category': categoryName,
         'description': (serviceRow['description'] as String?)?.trim() ?? '',
@@ -184,6 +185,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
         'discount': hasDiscount ? '$discountPct% OFF' : '',
         'rating': serviceRating,
         'reviewCount': mappedReviews.length,
+        'providerName': providerName,
         'image': image.isNotEmpty ? image : (_resolvedServiceData['image'] ?? ''),
       };
 

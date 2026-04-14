@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:ripo/customers_screens/notification_screen.dart';
 import 'package:ripo/providers_screens/provider_jobs_screen.dart';
 import 'package:ripo/providers_screens/provider_services_screen.dart';
@@ -24,11 +24,17 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
   String _ownerName = 'Provider';
   String _businessName = 'Business';
   String _avatarUrl = '';
+  bool _isLoadingRecent = true;
+  String? _updatingBookingId;
+  int _newRequestCount = 0;
+  int _completedCount = 0;
+  List<Map<String, dynamic>> _recentRequests = <Map<String, dynamic>>[];
 
   @override
   void initState() {
     super.initState();
     _loadProviderProfile();
+    _loadDashboardBookings();
   }
 
   Future<void> _loadProviderProfile() async {
@@ -69,7 +75,145 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
     }
   }
 
-  // ── Handlers ─────────────────────────────────────────────────────────────
+  Future<void> _loadDashboardBookings() async {
+    final client = Supabase.instance.client;
+    final providerId = client.auth.currentUser?.id;
+    if (providerId == null) {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingRecent = false;
+        _recentRequests = <Map<String, dynamic>>[];
+        _newRequestCount = 0;
+        _completedCount = 0;
+      });
+      return;
+    }
+
+    if (mounted) {
+      setState(() => _isLoadingRecent = true);
+    }
+
+    try {
+      final rows = await client
+          .from('bookings')
+          .select('''
+            id,
+            booking_date,
+            time_slot_text,
+            total_amount,
+            booking_status,
+            customer_id,
+            locations(address_line, area, city),
+            services(name)
+          ''')
+          .eq('provider_id', providerId)
+          .order('created_at', ascending: false);
+
+      final bookings = List<Map<String, dynamic>>.from(rows);
+      final customerIds = bookings
+          .map((r) => r['customer_id'] as String?)
+          .whereType<String>()
+          .toSet()
+          .toList();
+
+      final customerNameById = <String, String>{};
+      if (customerIds.isNotEmpty) {
+        final profileRows = await client
+            .from('profiles')
+            .select('id, full_name')
+            .inFilter('id', customerIds);
+        for (final row in List<Map<String, dynamic>>.from(profileRows)) {
+          final id = row['id'] as String?;
+          final name = (row['full_name'] as String?)?.trim() ?? '';
+          if (id != null) {
+            customerNameById[id] = name;
+          }
+        }
+      }
+
+      final pending = bookings.where((e) => (e['booking_status'] as String?) == 'pending').toList();
+      final completed = bookings.where((e) => (e['booking_status'] as String?) == 'completed').length;
+
+      final recentPending = pending.take(2).map((row) {
+        final serviceMap = row['services'] as Map<String, dynamic>?;
+        final locationMap = row['locations'] as Map<String, dynamic>?;
+        final customerId = row['customer_id'] as String?;
+        final amount = (row['total_amount'] as num?)?.toDouble() ?? 0;
+        final address = [
+          (locationMap?['address_line'] as String?)?.trim() ?? '',
+          (locationMap?['area'] as String?)?.trim() ?? '',
+          (locationMap?['city'] as String?)?.trim() ?? '',
+        ].where((e) => e.isNotEmpty).join(', ');
+
+        return <String, dynamic>{
+          'id': row['id'] as String? ?? '',
+          'name': customerId == null ? '' : (customerNameById[customerId] ?? ''),
+          'service': (serviceMap?['name'] as String?)?.trim() ?? '',
+          'address': address,
+          'date': _formatBookingDate(
+            (row['booking_date'] as String?)?.trim() ?? '',
+            (row['time_slot_text'] as String?)?.trim() ?? '',
+          ),
+          'price': amount % 1 == 0 ? amount.toStringAsFixed(0) : amount.toStringAsFixed(2),
+        };
+      }).toList();
+
+      if (!mounted) return;
+      setState(() {
+        _newRequestCount = pending.length;
+        _completedCount = completed;
+        _recentRequests = recentPending;
+        _isLoadingRecent = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isLoadingRecent = false);
+    }
+  }
+
+  String _formatBookingDate(String bookingDate, String timeSlot) {
+    if (bookingDate.isEmpty && timeSlot.isEmpty) return '';
+    final dt = DateTime.tryParse(bookingDate);
+    if (dt == null) return '$bookingDate ${timeSlot.isEmpty ? '' : '- $timeSlot'}'.trim();
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final dateText = '${dt.day} ${months[dt.month - 1]} ${dt.year}';
+    return timeSlot.isEmpty ? dateText : '$dateText, $timeSlot';
+  }
+
+  Future<void> _updateBookingStatus({
+    required String bookingId,
+    required String status,
+  }) async {
+    if (_updatingBookingId != null) return;
+    final client = Supabase.instance.client;
+    final providerId = client.auth.currentUser?.id;
+    if (providerId == null) return;
+
+    setState(() => _updatingBookingId = bookingId);
+    try {
+      await client.from('bookings').update({'booking_status': status}).eq('id', bookingId);
+      await client.from('booking_status_history').insert({
+        'booking_id': bookingId,
+        'status': status,
+        'changed_by': providerId,
+        'note': 'Status updated by provider from dashboard.',
+      });
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Request ${status == 'accepted' ? 'accepted' : 'declined'}')),
+      );
+      await _loadDashboardBookings();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not update request status.')),
+      );
+    } finally {
+      if (mounted) setState(() => _updatingBookingId = null);
+    }
+  }
+
+  // â”€â”€ Handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   void _showAddActionSheet() {
     showModalBottomSheet(
@@ -200,7 +344,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
     );
   }
 
-  // ── Build ────────────────────────────────────────────────────────────────
+  // â”€â”€ Build â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   @override
   Widget build(BuildContext context) {
@@ -289,25 +433,63 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
               children: [
                 _buildStatsGrid(),
                 const SizedBox(height: 28),
-                _buildSectionTitle('Recent Requests'),
+                _buildSectionTitle(
+                  'Recent Requests',
+                  onTap: () => setState(() => _selectedNavIndex = 1),
+                ),
                 const SizedBox(height: 16),
-                _buildRecentRequestCard(
-                  name: 'Rahim Ahmed',
-                  service: 'AC Servicing',
-                  address: 'Sector 4, Uttara, Dhaka',
-                  date: 'Today, 2:30 PM',
-                  price: '1,200',
-                  avatar: Icons.person,
-                ),
-                const SizedBox(height: 12),
-                _buildRecentRequestCard(
-                  name: 'Tania Islam',
-                  service: 'House Cleaning',
-                  address: 'Tongi, Gazipur',
-                  date: 'Tomorrow, 10:00 AM',
-                  price: '800',
-                  avatar: Icons.person_3,
-                ),
+                if (_isLoadingRecent)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 14),
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                else if (_recentRequests.isEmpty)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: const [
+                        BoxShadow(color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 4)),
+                      ],
+                    ),
+                    child: const Text(
+                      'No pending requests.',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 13,
+                        color: Colors.black54,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  )
+                else
+                  ..._recentRequests.asMap().entries.map((entry) {
+                    final request = entry.value;
+                    final bookingId = request['id'] as String;
+                    final isUpdating = _updatingBookingId == bookingId;
+                    return Padding(
+                      padding: EdgeInsets.only(bottom: entry.key == _recentRequests.length - 1 ? 0 : 12),
+                      child: _buildRecentRequestCard(
+                        bookingId: bookingId,
+                        name: (request['name'] as String).isEmpty ? 'Customer' : request['name'] as String,
+                        service: request['service'] as String,
+                        address: (request['address'] as String).isEmpty
+                            ? 'Address not provided'
+                            : request['address'] as String,
+                        date: request['date'] as String,
+                        price: request['price'] as String,
+                        avatar: Icons.person,
+                        onDecline: isUpdating
+                            ? null
+                            : () => _updateBookingStatus(bookingId: bookingId, status: 'rejected'),
+                        onAccept: isUpdating
+                            ? null
+                            : () => _updateBookingStatus(bookingId: bookingId, status: 'accepted'),
+                      ),
+                    );
+                  }),
                 const SizedBox(height: 28),
                 _buildSectionTitle('Today\'s Schedule'),
                 const SizedBox(height: 16),
@@ -321,7 +503,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
     );
   }
 
-  // ── Header ───────────────────────────────────────────────────────────────
+  // â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Widget _buildHeader() {
     final ImageProvider avatarProvider = _avatarUrl.isNotEmpty
@@ -442,7 +624,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
     );
   }
 
-  // ── Stats Grid ───────────────────────────────────────────────────────────
+  // â”€â”€ Stats Grid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Widget _buildStatsGrid() {
     return Row(
@@ -450,7 +632,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
         Expanded(
           child: _buildStatCard(
             title: 'Today\'s Earnings',
-            value: '৳ 3,200',
+            value: 'à§³ 3,200',
             icon: Icons.account_balance_wallet_rounded,
             color: const Color(0xFF6950F4),
             bgColor: const Color(0xFFEDE9FF),
@@ -462,7 +644,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
             children: [
               _buildSmallStat(
                 title: 'New Requests',
-                value: '4',
+                value: '$_newRequestCount',
                 icon: Icons.person_add_rounded,
                 color: const Color(0xFFFF8F00),
                 bgColor: const Color(0xFFFFF3E0),
@@ -470,7 +652,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
               const SizedBox(height: 12),
               _buildSmallStat(
                 title: 'Completed',
-                value: '12',
+                value: '$_completedCount',
                 icon: Icons.task_alt_rounded,
                 color: const Color(0xFF43A047),
                 bgColor: const Color(0xFFE8F5E9),
@@ -567,9 +749,9 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
     );
   }
 
-  // ── Section Title ────────────────────────────────────────────────────────
+  // â”€â”€ Section Title â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  Widget _buildSectionTitle(String title) {
+  Widget _buildSectionTitle(String title, {VoidCallback? onTap}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -582,28 +764,34 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
             color: Colors.black87,
           ),
         ),
-        const Text(
-          'See All',
-          style: TextStyle(
-            fontFamily: 'Inter',
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF6950F4),
+        GestureDetector(
+          onTap: onTap,
+          child: Text(
+            'See All',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: onTap == null ? Colors.black38 : const Color(0xFF6950F4),
+            ),
           ),
         ),
       ],
     );
   }
 
-  // ── Recent Request Card ──────────────────────────────────────────────────
+  // â”€â”€ Recent Request Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Widget _buildRecentRequestCard({
+    required String bookingId,
     required String name,
     required String service,
     required String address,
     required String date,
     required String price,
     required IconData avatar,
+    required VoidCallback? onDecline,
+    required VoidCallback? onAccept,
   }) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -636,7 +824,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                   ],
                 ),
               ),
-              Text('৳ $price', style: const TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w800, color: Colors.black87)),
+              Text('BDT $price', style: const TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w800, color: Colors.black87)),
             ],
           ),
           const SizedBox(height: 16),
@@ -660,7 +848,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
             children: [
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () {},
+                  onPressed: onDecline,
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: Color(0xFFFF5252)),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -672,7 +860,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton(
-                  onPressed: () {},
+                  onPressed: onAccept,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF6950F4),
                     elevation: 0,
@@ -689,7 +877,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
     );
   }
 
-  // ── Schedule Card ────────────────────────────────────────────────────────
+  // â”€â”€ Schedule Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Widget _buildScheduleCard() {
     return Container(
@@ -739,7 +927,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
     );
   }
 
-  // ── Bottom Nav ───────────────────────────────────────────────────────────
+  // â”€â”€ Bottom Nav â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Widget _buildBottomNav() {
     return BottomAppBar(
@@ -799,3 +987,4 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
     );
   }
 }
+
