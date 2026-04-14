@@ -2,6 +2,8 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:ripo/customers_screens/customer_dashboard_screen.dart';
+import 'package:ripo/customers_screens/location_picker_bottom_sheet.dart';
+import 'package:ripo/core/customer_location_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class BookingScheduleScreen extends StatefulWidget {
@@ -20,10 +22,15 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
   bool _isBootstrapping = true;
   bool _isLoadingSlots = false;
   bool _isSubmitting = false;
+  bool _isLoadingAddress = false;
 
   String _serviceId = '';
   String _providerId = '';
   int _serviceDurationMinutes = 60;
+  String _selectedAddressText = 'No address selected';
+  double? _selectedLatitude;
+  double? _selectedLongitude;
+  String? _selectedLocationId;
 
   Set<int> _workingDays = const {0, 1, 2, 3, 4, 5, 6};
   TimeOfDay _workStart = const TimeOfDay(hour: 8, minute: 0);
@@ -75,6 +82,7 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
         await _loadProviderSchedule(_providerId);
       }
 
+      await _loadCustomerDefaultAddress();
       _dates = _generateProviderDates();
       if (_dates.isNotEmpty) {
         _selectedDateIndex = 0;
@@ -114,6 +122,67 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
     _workingDays = dbDays.isEmpty ? _workingDays : dbDays;
     _workStart = start ?? _workStart;
     _workEnd = end ?? _workEnd;
+  }
+
+  Future<void> _loadCustomerDefaultAddress() async {
+    if (!mounted) return;
+    setState(() => _isLoadingAddress = true);
+    try {
+      final saved = await CustomerLocationService.getDefaultLocation();
+      if (!mounted) return;
+      if (saved != null) {
+        setState(() {
+          _selectedAddressText = saved.address;
+          _selectedLatitude = saved.latitude;
+          _selectedLongitude = saved.longitude;
+          _selectedLocationId = saved.locationId;
+          _isLoadingAddress = false;
+        });
+        return;
+      }
+      setState(() => _isLoadingAddress = false);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isLoadingAddress = false);
+    }
+  }
+
+  Future<void> _openAddressPicker() async {
+    final picked = await LocationPickerBottomSheet.show(
+      context,
+      initialLatitude: _selectedLatitude,
+      initialLongitude: _selectedLongitude,
+      initialAddress: _selectedAddressText,
+    );
+    if (!mounted || picked == null) return;
+
+    setState(() {
+      _selectedAddressText = picked.address;
+      _selectedLatitude = picked.latitude;
+      _selectedLongitude = picked.longitude;
+      _selectedLocationId = null;
+    });
+
+    try {
+      await CustomerLocationService.setDefaultLocation(
+        latitude: picked.latitude,
+        longitude: picked.longitude,
+        address: picked.address,
+      );
+      final refreshed = await CustomerLocationService.getDefaultLocation();
+      if (!mounted || refreshed == null) return;
+      setState(() {
+        _selectedAddressText = refreshed.address;
+        _selectedLatitude = refreshed.latitude;
+        _selectedLongitude = refreshed.longitude;
+        _selectedLocationId = refreshed.locationId;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not update booking address.')),
+      );
+    }
   }
 
   TimeOfDay? _parseDbTime(String? value) {
@@ -419,23 +488,33 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
       ),
       body: _isBootstrapping
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                child: Column(
-                  children: [
-                    _buildNoticeBanner(),
-                    const SizedBox(height: 14),
-                    _buildDateSelector(),
-                    const SizedBox(height: 14),
-                    _buildTimeSelector(),
-                    const SizedBox(height: 24),
-                    _buildConfirmButton(),
-                    const SizedBox(height: 16),
-                  ],
+          : Column(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 10),
+                    child: Column(
+                      children: [
+                        _buildNoticeBanner(),
+                        const SizedBox(height: 14),
+                        _buildAddressCard(),
+                        const SizedBox(height: 14),
+                        _buildDateSelector(),
+                        const SizedBox(height: 14),
+                        _buildTimeSelector(),
+                        const SizedBox(height: 20),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
+                SafeArea(
+                  top: false,
+                  minimum:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  child: _buildConfirmButton(),
+                ),
+              ],
             ),
     );
   }
@@ -612,6 +691,82 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
     );
   }
 
+  Widget _buildAddressCard() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 10,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Service Address',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black87,
+                ),
+              ),
+              IconButton(
+                onPressed: _openAddressPicker,
+                tooltip: 'Edit address',
+                icon: const Icon(
+                  Icons.edit_rounded,
+                  size: 18,
+                  color: Color(0xFF6950F4),
+                ),
+              ),
+            ],
+          ),
+          if (_isLoadingAddress)
+            const Padding(
+              padding: EdgeInsets.only(top: 6),
+              child: LinearProgressIndicator(minHeight: 2),
+            )
+          else
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(top: 2),
+                  child: Icon(
+                    Icons.location_on_rounded,
+                    size: 16,
+                    color: Color(0xFF6950F4),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    _selectedAddressText,
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 12,
+                      color: Colors.black87,
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildTimeSelector() {
     return Container(
       padding: const EdgeInsets.all(12),
@@ -770,6 +925,8 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
             const SizedBox(height: 8),
             _buildDialogRow('Provider:', provider),
             const SizedBox(height: 8),
+            _buildDialogRow('Address:', _selectedAddressText),
+            const SizedBox(height: 8),
             _buildDialogRow('Date:', selectedDateString),
             const SizedBox(height: 8),
             _buildDialogRow('Time:', selectedTimeString),
@@ -834,6 +991,12 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
     if (_serviceId.isEmpty || _providerId.isEmpty || _dates.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Service information is incomplete.')),
+      );
+      return;
+    }
+    if (_selectedLocationId == null || _selectedLocationId!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please set your service address first.')),
       );
       return;
     }
@@ -906,6 +1069,7 @@ class _BookingScheduleScreenState extends State<BookingScheduleScreen> {
             'customer_id': customerId,
             'provider_id': _providerId,
             'service_id': _serviceId,
+            'location_id': _selectedLocationId,
             'booking_date': selectedDate,
             'time_slot_text': slotText,
             'scheduled_at': scheduledAt.toIso8601String(),

@@ -1,6 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:ripo/customers_screens/booking_schedule.dart';
 import 'package:ripo/customers_screens/chat_detail_screen.dart';
+import 'package:http/http.dart' as http;
+import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ServiceDetailsScreen extends StatefulWidget {
@@ -21,6 +25,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
   int _selectedTabIndex = 0;
   bool _isLoading = false;
   bool _isFavorite = false;
+  String _distanceText = 'Calculating...';
   Map<String, dynamic> _resolvedServiceData = <String, dynamic>{};
   Map<String, dynamic> _providerData = <String, dynamic>{};
   List<Map<String, dynamic>> _reviews = <Map<String, dynamic>>[];
@@ -151,6 +156,8 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
 
       final regular = (serviceRow['regular_price'] as num?)?.toDouble();
       final offer = (serviceRow['offer_price'] as num?)?.toDouble();
+      final serviceLat = (serviceRow['service_latitude'] as num?)?.toDouble();
+      final serviceLng = (serviceRow['service_longitude'] as num?)?.toDouble();
       final hasDiscount = regular != null &&
           offer != null &&
           regular > 0 &&
@@ -235,9 +242,130 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
         _isFavorite = isFavorite;
         _isLoading = false;
       });
+
+      if (!widget.isProviderPreview) {
+        await _loadDistanceFromCustomerToService(
+          serviceLatitude: serviceLat,
+          serviceLongitude: serviceLng,
+          providerId: providerId,
+        );
+      }
     } catch (_) {
       if (!mounted) return;
       setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _loadDistanceFromCustomerToService({
+    required double? serviceLatitude,
+    required double? serviceLongitude,
+    required String? providerId,
+  }) async {
+    final client = Supabase.instance.client;
+    final userId = client.auth.currentUser?.id;
+    if (userId == null) {
+      if (mounted) {
+        setState(() => _distanceText = 'N/A');
+      }
+      return;
+    }
+
+    try {
+      final profile = await client
+          .from('customer_profiles')
+          .select('default_location_id')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+      final locationId = (profile?['default_location_id'] as String?)?.trim();
+      if (locationId == null || locationId.isEmpty) return;
+
+      final location = await client
+          .from('locations')
+          .select('latitude, longitude')
+          .eq('id', locationId)
+          .maybeSingle();
+
+      final customerLat = (location?['latitude'] as num?)?.toDouble();
+      final customerLng = (location?['longitude'] as num?)?.toDouble();
+      if (customerLat == null || customerLng == null) {
+        if (mounted) {
+          setState(() => _distanceText = 'N/A');
+        }
+        return;
+      }
+
+      double? targetLat = serviceLatitude;
+      double? targetLng = serviceLongitude;
+
+      if ((targetLat == null || targetLng == null) &&
+          providerId != null &&
+          providerId.isNotEmpty) {
+        final providerLoc = await client
+            .from('locations')
+            .select('latitude, longitude')
+            .eq('user_id', providerId)
+            .eq('is_default', true)
+            .order('created_at', ascending: false)
+            .limit(1)
+            .maybeSingle();
+
+        targetLat = (providerLoc?['latitude'] as num?)?.toDouble();
+        targetLng = (providerLoc?['longitude'] as num?)?.toDouble();
+      }
+
+      if (targetLat == null || targetLng == null) {
+        if (mounted) {
+          setState(() => _distanceText = 'N/A');
+        }
+        return;
+      }
+
+      final routeKm = await _fetchRoadDistanceKm(
+        fromLat: customerLat,
+        fromLng: customerLng,
+        toLat: targetLat,
+        toLng: targetLng,
+      );
+
+      final km = routeKm ??
+          const Distance().as(
+            LengthUnit.Kilometer,
+            LatLng(customerLat, customerLng),
+            LatLng(targetLat, targetLng),
+          );
+
+      if (!mounted) return;
+      setState(() => _distanceText = '${km.toStringAsFixed(2)} km');
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _distanceText = 'N/A');
+    }
+  }
+
+  Future<double?> _fetchRoadDistanceKm({
+    required double fromLat,
+    required double fromLng,
+    required double toLat,
+    required double toLng,
+  }) async {
+    try {
+      final uri = Uri.parse(
+        'https://router.project-osrm.org/route/v1/driving/'
+        '$fromLng,$fromLat;$toLng,$toLat'
+        '?overview=false&steps=false',
+      );
+      final response = await http.get(uri).timeout(const Duration(seconds: 10));
+      if (response.statusCode != 200) return null;
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final routes = data['routes'] as List<dynamic>? ?? const [];
+      if (routes.isEmpty) return null;
+      final firstRoute = routes.first as Map<String, dynamic>;
+      final meters = (firstRoute['distance'] as num?)?.toDouble();
+      if (meters == null || meters <= 0) return null;
+      return meters / 1000;
+    } catch (_) {
+      return null;
     }
   }
 
@@ -519,14 +647,29 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                duration.isEmpty ? '' : 'Duration: $duration',
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black54,
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Distance: $_distanceText',
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black54,
+                    ),
+                  ),
+                  if (duration.isNotEmpty) const SizedBox(height: 4),
+                  Text(
+                    duration.isEmpty ? '' : 'Duration: $duration',
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black54,
+                    ),
+                  ),
+                ],
               ),
               Row(
                 children: [

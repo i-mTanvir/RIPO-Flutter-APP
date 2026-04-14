@@ -23,6 +23,10 @@ class ProviderServiceRecord {
     required this.variations,
     required this.faqs,
     required this.durationText,
+    required this.serviceLocationId,
+    required this.serviceLocationText,
+    required this.serviceLatitude,
+    required this.serviceLongitude,
     required this.regularPrice,
     required this.offerPrice,
     required this.isActive,
@@ -37,6 +41,10 @@ class ProviderServiceRecord {
   final String? variations;
   final String? faqs;
   final String? durationText;
+  final String? serviceLocationId;
+  final String? serviceLocationText;
+  final double? serviceLatitude;
+  final double? serviceLongitude;
   final double regularPrice;
   final double? offerPrice;
   final bool isActive;
@@ -82,6 +90,10 @@ class ProviderServiceInput {
     required this.categoryId,
     required this.regularPrice,
     required this.durationText,
+    required this.serviceLocationId,
+    required this.serviceLocationText,
+    required this.serviceLatitude,
+    required this.serviceLongitude,
     required this.existingImageUrls,
     required this.newImages,
     this.serviceId,
@@ -97,6 +109,10 @@ class ProviderServiceInput {
   final double regularPrice;
   final double? offerPrice;
   final String? durationText;
+  final String? serviceLocationId;
+  final String? serviceLocationText;
+  final double? serviceLatitude;
+  final double? serviceLongitude;
   final String? description;
   final String? variations;
   final String? faqs;
@@ -146,6 +162,10 @@ class ProviderServiceService {
           variations,
           faqs,
           duration_text,
+          service_location_id,
+          service_location_text,
+          service_latitude,
+          service_longitude,
           regular_price,
           offer_price,
           is_active,
@@ -180,6 +200,10 @@ class ProviderServiceService {
         variations: row['variations'] as String?,
         faqs: row['faqs'] as String?,
         durationText: row['duration_text'] as String?,
+        serviceLocationId: row['service_location_id'] as String?,
+        serviceLocationText: row['service_location_text'] as String?,
+        serviceLatitude: (row['service_latitude'] as num?)?.toDouble(),
+        serviceLongitude: (row['service_longitude'] as num?)?.toDouble(),
         regularPrice: (row['regular_price'] as num).toDouble(),
         offerPrice: (row['offer_price'] as num?)?.toDouble(),
         isActive: row['is_active'] as bool? ?? true,
@@ -202,6 +226,10 @@ class ProviderServiceService {
       'variations': _nullableText(input.variations),
       'faqs': _nullableText(input.faqs),
       'duration_text': _nullableText(input.durationText),
+      'service_location_id': input.serviceLocationId,
+      'service_location_text': _nullableText(input.serviceLocationText),
+      'service_latitude': input.serviceLatitude,
+      'service_longitude': input.serviceLongitude,
       'regular_price': input.regularPrice,
       'offer_price': input.offerPrice,
       'is_active': true,

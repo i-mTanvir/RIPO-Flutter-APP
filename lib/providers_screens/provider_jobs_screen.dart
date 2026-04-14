@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:ripo/core/provider_location_service.dart';
+import 'package:ripo/providers_screens/provider_distance_map_bottom_sheet.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ProviderJobsScreen extends StatefulWidget {
@@ -13,13 +15,29 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
   late TabController _tabController;
   bool _isLoading = true;
   String? _updatingBookingId;
+  double? _providerLatitude;
+  double? _providerLongitude;
   List<Map<String, dynamic>> _jobs = <Map<String, dynamic>>[];
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _loadProviderLocation();
     _loadJobs();
+  }
+
+  Future<void> _loadProviderLocation() async {
+    try {
+      final saved = await ProviderLocationService.getDefaultLocation();
+      if (!mounted || saved == null) return;
+      setState(() {
+        _providerLatitude = saved.latitude;
+        _providerLongitude = saved.longitude;
+      });
+    } catch (_) {
+      // Keep null values fallback.
+    }
   }
 
   @override
@@ -54,7 +72,7 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
             booking_status,
             customer_id,
             created_at,
-            locations(address_line, area, city),
+            locations(address_line, area, city, latitude, longitude),
             services(name)
           ''')
           .eq('provider_id', providerId)
@@ -94,6 +112,8 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
             (locationMap?['address_line'] as String?)?.trim() ?? '';
         final area = (locationMap?['area'] as String?)?.trim() ?? '';
         final city = (locationMap?['city'] as String?)?.trim() ?? '';
+        final customerLat = (locationMap?['latitude'] as num?)?.toDouble();
+        final customerLng = (locationMap?['longitude'] as num?)?.toDouble();
 
         return <String, dynamic>{
           'id': row['id'],
@@ -106,6 +126,8 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
           'serviceName': (serviceMap?['name'] as String?)?.trim() ?? '',
           'address':
               [addressLine, area, city].where((e) => e.isNotEmpty).join(', '),
+          'customerLat': customerLat,
+          'customerLng': customerLng,
           'date': _formatBookingDate(
             (row['booking_date'] as String?)?.trim() ?? '',
             (row['time_slot_text'] as String?)?.trim() ?? '',
@@ -211,6 +233,45 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
       default:
         return 'Pending';
     }
+  }
+
+  Future<void> _showDistanceSheet({
+    required String customerAddress,
+    required double? customerLat,
+    required double? customerLng,
+  }) async {
+    if (customerLat == null || customerLng == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Customer location is not available.')),
+      );
+      return;
+    }
+
+    var providerLat = _providerLatitude;
+    var providerLng = _providerLongitude;
+    if (providerLat == null || providerLng == null) {
+      final saved = await ProviderLocationService.getDefaultLocation();
+      providerLat = saved?.latitude;
+      providerLng = saved?.longitude;
+    }
+
+    if (providerLat == null || providerLng == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Set your provider location first.')),
+      );
+      return;
+    }
+
+    if (!mounted) return;
+    await ProviderDistanceMapBottomSheet.show(
+      context,
+      providerLat: providerLat,
+      providerLng: providerLng,
+      customerLat: customerLat,
+      customerLng: customerLng,
+      customerAddress: customerAddress,
+    );
   }
 
   List<Map<String, dynamic>> get _requestJobs =>
@@ -327,9 +388,18 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
             address: (j['address'] as String).isEmpty
                 ? 'Address not provided'
                 : j['address'] as String,
+            customerLat: j['customerLat'] as double?,
+            customerLng: j['customerLng'] as double?,
             date: j['date'] as String,
             price: j['price'] as String,
             customerAvatarUrl: j['customerAvatarUrl'] as String,
+            onAddressTap: () => _showDistanceSheet(
+              customerAddress: (j['address'] as String).isEmpty
+                  ? 'Address not provided'
+                  : j['address'] as String,
+              customerLat: j['customerLat'] as double?,
+              customerLng: j['customerLng'] as double?,
+            ),
             showContactOptions: false,
             actionButtons: _buildActionButtons(
               negativeLabel: 'Decline',
@@ -375,9 +445,18 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
             address: (j['address'] as String).isEmpty
                 ? 'Address not provided'
                 : j['address'] as String,
+            customerLat: j['customerLat'] as double?,
+            customerLng: j['customerLng'] as double?,
             date: j['date'] as String,
             price: j['price'] as String,
             customerAvatarUrl: j['customerAvatarUrl'] as String,
+            onAddressTap: () => _showDistanceSheet(
+              customerAddress: (j['address'] as String).isEmpty
+                  ? 'Address not provided'
+                  : j['address'] as String,
+              customerLat: j['customerLat'] as double?,
+              customerLng: j['customerLng'] as double?,
+            ),
             showContactOptions: true,
             actionButtons: _buildActionButtons(
               negativeLabel: 'Cancel Job',
@@ -431,9 +510,18 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
             address: (j['address'] as String).isEmpty
                 ? 'Address not provided'
                 : j['address'] as String,
+            customerLat: j['customerLat'] as double?,
+            customerLng: j['customerLng'] as double?,
             date: j['date'] as String,
             price: j['price'] as String,
             customerAvatarUrl: j['customerAvatarUrl'] as String,
+            onAddressTap: () => _showDistanceSheet(
+              customerAddress: (j['address'] as String).isEmpty
+                  ? 'Address not provided'
+                  : j['address'] as String,
+              customerLat: j['customerLat'] as double?,
+              customerLng: j['customerLng'] as double?,
+            ),
             isCompleted: isCompleted,
           ),
         );
@@ -461,9 +549,12 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
     required String name,
     required String service,
     required String address,
+    required double? customerLat,
+    required double? customerLng,
     required String date,
     required String price,
     required String customerAvatarUrl,
+    required VoidCallback onAddressTap,
     bool showContactOptions = false,
     bool isCompleted = false,
     Widget? actionButtons,
@@ -581,10 +672,24 @@ class _ProviderJobsScreenState extends State<ProviderJobsScreen>
                   size: 16, color: Colors.black38),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  address,
-                  style: const TextStyle(
-                      fontFamily: 'Inter', fontSize: 13, color: Colors.black54),
+                child: InkWell(
+                  onTap: (customerLat != null &&
+                          customerLng != null &&
+                          address != 'Address not provided')
+                      ? onAddressTap
+                      : null,
+                  borderRadius: BorderRadius.circular(6),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: Text(
+                      address,
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 13,
+                        color: Colors.black54,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ],

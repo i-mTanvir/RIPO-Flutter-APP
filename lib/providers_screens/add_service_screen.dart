@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:ripo/core/app_snackbar.dart';
 import 'package:ripo/core/provider_service_service.dart';
+import 'package:ripo/core/provider_location_service.dart';
+import 'package:ripo/customers_screens/location_picker_bottom_sheet.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AddServiceScreen extends StatefulWidget {
@@ -27,7 +29,12 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
 
   bool _isSaving = false;
   bool _isLoadingCategories = true;
+  bool _isLoadingProviderLocation = true;
   String? _selectedCategoryId;
+  String? _providerLocationId;
+  String _providerLocationText = 'Location not set';
+  double? _providerLatitude;
+  double? _providerLongitude;
   List<ProviderCategoryOption> _categories = const [];
   final List<_SelectedServiceImage> _images = [];
 
@@ -46,6 +53,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
     super.initState();
     _populateInitialValues();
     _loadCategories();
+    _loadProviderLocation();
   }
 
   void _populateInitialValues() {
@@ -62,6 +70,11 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
     _descriptionController.text = (data['description'] as String?) ?? '';
     _variationsController.text = (data['variations'] as String?) ?? '';
     _faqsController.text = (data['faqs'] as String?) ?? '';
+    _providerLocationId = (data['serviceLocationId'] as String?)?.trim();
+    _providerLocationText = (data['serviceLocationText'] as String?)?.trim() ??
+        _providerLocationText;
+    _providerLatitude = (data['serviceLatitude'] as num?)?.toDouble();
+    _providerLongitude = (data['serviceLongitude'] as num?)?.toDouble();
 
     for (final url in _extractMediaUrls(data)) {
       _images.add(_SelectedServiceImage.remote(url));
@@ -102,6 +115,58 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
       context.showAppSnackBar('Could not load service categories.',
           isError: true);
       setState(() => _isLoadingCategories = false);
+    }
+  }
+
+  Future<void> _loadProviderLocation() async {
+    try {
+      final saved = await ProviderLocationService.getDefaultLocation();
+      if (!mounted) return;
+
+      setState(() {
+        if (saved != null) {
+          _providerLocationId ??= saved.locationId;
+          _providerLocationText = _providerLocationText == 'Location not set'
+              ? saved.address
+              : _providerLocationText;
+          _providerLatitude ??= saved.latitude;
+          _providerLongitude ??= saved.longitude;
+        }
+        _isLoadingProviderLocation = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isLoadingProviderLocation = false);
+    }
+  }
+
+  Future<void> _editProviderLocation() async {
+    final picked = await LocationPickerBottomSheet.show(
+      context,
+      initialLatitude: _providerLatitude,
+      initialLongitude: _providerLongitude,
+      initialAddress: _providerLocationText,
+    );
+    if (!mounted || picked == null) return;
+
+    try {
+      final locationId = await ProviderLocationService.setDefaultLocation(
+        latitude: picked.latitude,
+        longitude: picked.longitude,
+        address: picked.address,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _providerLocationId = locationId;
+        _providerLocationText = picked.address;
+        _providerLatitude = picked.latitude;
+        _providerLongitude = picked.longitude;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      context.showAppSnackBar('Could not update provider location.',
+          isError: true);
     }
   }
 
@@ -167,6 +232,15 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
       context.showAppSnackBar('Add at least one service image.', isError: true);
       return;
     }
+    if (_providerLocationId == null ||
+        _providerLocationId!.isEmpty ||
+        _providerLatitude == null ||
+        _providerLongitude == null) {
+      context.showAppSnackBar(
+          'Set provider location before publishing service.',
+          isError: true);
+      return;
+    }
 
     final regularPrice = double.tryParse(_regularPriceController.text.trim());
     final offerText = _offerPriceController.text.trim();
@@ -198,6 +272,10 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
           regularPrice: regularPrice,
           offerPrice: offerPrice,
           durationText: _durationController.text.trim(),
+          serviceLocationId: _providerLocationId!,
+          serviceLocationText: _providerLocationText,
+          serviceLatitude: _providerLatitude!,
+          serviceLongitude: _providerLongitude!,
           description: _descriptionController.text.trim(),
           variations: _variationsController.text.trim(),
           faqs: _faqsController.text.trim(),
@@ -426,6 +504,8 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                             'e.g. Q: How long does it take?\nA: Typically 30-45 mins.',
                         maxLines: 4,
                       ),
+                      const SizedBox(height: 24),
+                      _buildProviderLocationCard(),
                       const SizedBox(height: 40),
                     ],
                   ),
@@ -632,6 +712,76 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                   DropdownMenuItem<String>(value: c.id, child: Text(c.name)))
               .toList(),
         ),
+      ),
+    );
+  }
+
+  Widget _buildProviderLocationCard() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.black12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Provider Location',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black87,
+                ),
+              ),
+              IconButton(
+                onPressed: _isSaving ? null : _editProviderLocation,
+                tooltip: 'Edit provider location',
+                icon: const Icon(
+                  Icons.edit_rounded,
+                  size: 18,
+                  color: Color(0xFF6950F4),
+                ),
+              ),
+            ],
+          ),
+          if (_isLoadingProviderLocation)
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: LinearProgressIndicator(minHeight: 2),
+            )
+          else
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(top: 2),
+                  child: Icon(
+                    Icons.location_on_rounded,
+                    size: 16,
+                    color: Colors.black54,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    _providerLocationText,
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 12,
+                      color: Colors.black54,
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+        ],
       ),
     );
   }

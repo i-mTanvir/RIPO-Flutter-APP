@@ -1,9 +1,13 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:ripo/core/location_service.dart';
+import 'package:ripo/core/provider_location_service.dart';
 import 'package:ripo/customers_screens/notification_screen.dart';
+import 'package:ripo/customers_screens/location_picker_bottom_sheet.dart';
 import 'package:ripo/providers_screens/provider_jobs_screen.dart';
 import 'package:ripo/providers_screens/provider_services_screen.dart';
 import 'package:ripo/providers_screens/provider_wallet_screen.dart';
 import 'package:ripo/providers_screens/provider_business_profile_screen.dart';
+import 'package:ripo/providers_screens/provider_distance_map_bottom_sheet.dart';
 import 'package:ripo/providers_screens/provider_schedule_screen.dart';
 import 'package:ripo/providers_screens/provider_profile_screen.dart';
 import 'package:ripo/providers_screens/add_service_screen.dart';
@@ -25,17 +29,164 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
   String _ownerName = 'Provider';
   String _businessName = 'Business';
   String _avatarUrl = '';
+  String _currentLocationText = 'Detecting location...';
+  double? _currentLatitude;
+  double? _currentLongitude;
+  bool _isResolvingLocation = true;
+  bool _hasSavedDefaultLocation = false;
   bool _isLoadingRecent = true;
   String? _updatingBookingId;
   int _newRequestCount = 0;
   int _completedCount = 0;
   List<Map<String, dynamic>> _recentRequests = <Map<String, dynamic>>[];
+  Map<String, String>? _todaySchedule;
 
   @override
   void initState() {
     super.initState();
     _loadProviderProfile();
+    _bootstrapProviderLocation();
     _loadDashboardBookings();
+  }
+
+  Future<void> _bootstrapProviderLocation() async {
+    await _loadSavedProviderLocation();
+    await _resolveCurrentLocationInternal(saveIfMissingOnly: true);
+  }
+
+  Future<void> _loadSavedProviderLocation() async {
+    try {
+      final saved = await ProviderLocationService.getDefaultLocation();
+      if (!mounted || saved == null) return;
+      setState(() {
+        _currentLocationText = saved.address;
+        _currentLatitude = saved.latitude;
+        _currentLongitude = saved.longitude;
+        _hasSavedDefaultLocation = true;
+      });
+    } catch (_) {
+      // Keep runtime fallback.
+    }
+  }
+
+  Future<void> _resolveCurrentLocation() async {
+    await _resolveCurrentLocationInternal(saveIfMissingOnly: false);
+  }
+
+  Future<void> _resolveCurrentLocationInternal({
+    required bool saveIfMissingOnly,
+  }) async {
+    if (!mounted) return;
+    setState(() => _isResolvingLocation = true);
+
+    final result = await LocationService.detectCurrentLocation();
+    if (!mounted) return;
+
+    final shouldUpdateUi = !_hasSavedDefaultLocation || !saveIfMissingOnly;
+    if (shouldUpdateUi) {
+      setState(() {
+        _currentLocationText = result.locationText;
+        _currentLatitude = result.latitude;
+        _currentLongitude = result.longitude;
+      });
+    }
+
+    if (result.latitude != null &&
+        result.longitude != null &&
+        (!_hasSavedDefaultLocation || !saveIfMissingOnly)) {
+      await _persistProviderLocation(
+        latitude: result.latitude!,
+        longitude: result.longitude!,
+        address: result.locationText,
+      );
+    }
+
+    if (mounted) {
+      setState(() => _isResolvingLocation = false);
+    }
+  }
+
+  Future<void> _openLocationPicker() async {
+    final picked = await LocationPickerBottomSheet.show(
+      context,
+      initialLatitude: _currentLatitude,
+      initialLongitude: _currentLongitude,
+      initialAddress: _currentLocationText,
+    );
+    if (!mounted || picked == null) return;
+
+    setState(() {
+      _currentLatitude = picked.latitude;
+      _currentLongitude = picked.longitude;
+      _currentLocationText = picked.address;
+    });
+
+    await _persistProviderLocation(
+      latitude: picked.latitude,
+      longitude: picked.longitude,
+      address: picked.address,
+    );
+  }
+
+  Future<void> _persistProviderLocation({
+    required double latitude,
+    required double longitude,
+    required String address,
+  }) async {
+    try {
+      await ProviderLocationService.setDefaultLocation(
+        latitude: latitude,
+        longitude: longitude,
+        address: address,
+      );
+      if (!mounted) return;
+      setState(() => _hasSavedDefaultLocation = true);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not save provider location.')),
+      );
+    }
+  }
+
+  Future<void> _showDistanceSheet({
+    required String customerAddress,
+    required double? customerLat,
+    required double? customerLng,
+  }) async {
+    if (customerLat == null || customerLng == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Customer location is not available.')),
+      );
+      return;
+    }
+
+    var providerLat = _currentLatitude;
+    var providerLng = _currentLongitude;
+
+    if (providerLat == null || providerLng == null) {
+      final saved = await ProviderLocationService.getDefaultLocation();
+      providerLat = saved?.latitude;
+      providerLng = saved?.longitude;
+    }
+
+    if (providerLat == null || providerLng == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Set your provider location first.')),
+      );
+      return;
+    }
+
+    if (!mounted) return;
+    await ProviderDistanceMapBottomSheet.show(
+      context,
+      providerLat: providerLat,
+      providerLng: providerLng,
+      customerLat: customerLat,
+      customerLng: customerLng,
+      customerAddress: customerAddress,
+    );
   }
 
   Future<void> _loadProviderProfile() async {
@@ -108,7 +259,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
             total_amount,
             booking_status,
             customer_id,
-            locations(address_line, area, city),
+            locations(address_line, area, city, latitude, longitude),
             services(name)
           ''')
           .eq('provider_id', providerId)
@@ -156,6 +307,8 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
           (locationMap?['area'] as String?)?.trim() ?? '',
           (locationMap?['city'] as String?)?.trim() ?? '',
         ].where((e) => e.isNotEmpty).join(', ');
+        final customerLat = (locationMap?['latitude'] as num?)?.toDouble();
+        final customerLng = (locationMap?['longitude'] as num?)?.toDouble();
 
         return <String, dynamic>{
           'id': row['id'] as String? ?? '',
@@ -165,6 +318,8 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
               customerId == null ? '' : (customerAvatarById[customerId] ?? ''),
           'service': (serviceMap?['name'] as String?)?.trim() ?? '',
           'address': address,
+          'customerLat': customerLat,
+          'customerLng': customerLng,
           'date': _formatBookingDate(
             (row['booking_date'] as String?)?.trim() ?? '',
             (row['time_slot_text'] as String?)?.trim() ?? '',
@@ -175,11 +330,14 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
         };
       }).toList();
 
+      final todaysSchedule = _extractTodaySchedule(bookings);
+
       if (!mounted) return;
       setState(() {
         _newRequestCount = pending.length;
         _completedCount = completed;
         _recentRequests = recentPending;
+        _todaySchedule = todaysSchedule;
         _isLoadingRecent = false;
       });
     } catch (_) {
@@ -210,6 +368,105 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
     ];
     final dateText = '${dt.day} ${months[dt.month - 1]} ${dt.year}';
     return timeSlot.isEmpty ? dateText : '$dateText, $timeSlot';
+  }
+
+  Map<String, String>? _extractTodaySchedule(
+      List<Map<String, dynamic>> bookings) {
+    final now = DateTime.now();
+    final todayString =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+
+    final todayRows = bookings.where((row) {
+      final bookingDate = (row['booking_date'] as String?)?.trim() ?? '';
+      return bookingDate == todayString;
+    }).toList();
+
+    if (todayRows.isEmpty) return null;
+
+    List<Map<String, dynamic>> primary = todayRows
+        .where((row) => ['accepted', 'in_progress']
+            .contains((row['booking_status'] as String?)?.trim() ?? ''))
+        .toList();
+    if (primary.isEmpty) {
+      primary = todayRows
+          .where(
+              (row) => (row['booking_status'] as String?)?.trim() == 'pending')
+          .toList();
+    }
+    if (primary.isEmpty) return null;
+
+    primary.sort((a, b) {
+      final aMin =
+          _slotStartMinutes((a['time_slot_text'] as String?)?.trim() ?? '');
+      final bMin =
+          _slotStartMinutes((b['time_slot_text'] as String?)?.trim() ?? '');
+      return aMin.compareTo(bMin);
+    });
+
+    final nowMinutes = now.hour * 60 + now.minute;
+    Map<String, dynamic> selected = primary.first;
+    for (final row in primary) {
+      final start =
+          _slotStartMinutes((row['time_slot_text'] as String?)?.trim() ?? '');
+      if (start >= nowMinutes) {
+        selected = row;
+        break;
+      }
+    }
+
+    final serviceMap = selected['services'] as Map<String, dynamic>?;
+    final serviceName = (serviceMap?['name'] as String?)?.trim() ?? 'Service';
+    final slot = (selected['time_slot_text'] as String?)?.trim() ?? '';
+
+    return {
+      'day': now.day.toString().padLeft(2, '0'),
+      'month': _monthLabel(now.month),
+      'serviceName': serviceName,
+      'timeSlot': slot,
+    };
+  }
+
+  int _slotStartMinutes(String slot) {
+    if (slot.isEmpty) return 0;
+    final parts = slot.split(RegExp(r'\s*[-–]\s*'));
+    if (parts.isEmpty) return 0;
+    return _parseSingleTime(parts.first.trim());
+  }
+
+  int _parseSingleTime(String raw) {
+    final match =
+        RegExp(r'^(\d{1,2})(?::(\d{1,2}))?\s*([AaPp][Mm])?$').firstMatch(raw);
+    if (match == null) return 0;
+    var hour = int.tryParse(match.group(1) ?? '') ?? 0;
+    final minute = int.tryParse(match.group(2) ?? '0') ?? 0;
+    final ampm = match.group(3)?.toLowerCase();
+
+    if (ampm != null) {
+      if (hour == 12) {
+        hour = ampm == 'am' ? 0 : 12;
+      } else if (ampm == 'pm') {
+        hour += 12;
+      }
+    }
+    return hour * 60 + minute;
+  }
+
+  String _monthLabel(int month) {
+    const months = [
+      'JAN',
+      'FEB',
+      'MAR',
+      'APR',
+      'MAY',
+      'JUN',
+      'JUL',
+      'AUG',
+      'SEP',
+      'OCT',
+      'NOV',
+      'DEC',
+    ];
+    return months[(month - 1).clamp(0, 11)];
   }
 
   Future<void> _updateBookingStatus({
@@ -523,10 +780,20 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                         address: (request['address'] as String).isEmpty
                             ? 'Address not provided'
                             : request['address'] as String,
+                        customerLat: request['customerLat'] as double?,
+                        customerLng: request['customerLng'] as double?,
                         date: request['date'] as String,
                         price: request['price'] as String,
                         customerAvatarUrl:
                             request['customerAvatarUrl'] as String,
+                        onAddressTap: () => _showDistanceSheet(
+                          customerAddress:
+                              (request['address'] as String).isEmpty
+                                  ? 'Address not provided'
+                                  : request['address'] as String,
+                          customerLat: request['customerLat'] as double?,
+                          customerLng: request['customerLng'] as double?,
+                        ),
                         onDecline: isUpdating
                             ? null
                             : () => _updateBookingStatus(
@@ -596,22 +863,65 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Good Morning,',
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 12,
-                          color: Colors.black54,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
                       Text(
                         _ownerName,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontFamily: 'Inter',
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
                           color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      InkWell(
+                        onTap: _openLocationPicker,
+                        borderRadius: BorderRadius.circular(6),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.location_on_rounded,
+                              size: 14,
+                              color: Colors.black54,
+                            ),
+                            const SizedBox(width: 4),
+                            SizedBox(
+                              width: 170,
+                              child: Text(
+                                _currentLocationText,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontSize: 12,
+                                  color: Colors.black54,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                            if (_isResolvingLocation)
+                              const Padding(
+                                padding: EdgeInsets.only(left: 6),
+                                child: SizedBox(
+                                  width: 12,
+                                  height: 12,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 1.8,
+                                  ),
+                                ),
+                              )
+                            else
+                              IconButton(
+                                onPressed: _resolveCurrentLocation,
+                                icon: const Icon(
+                                  Icons.refresh_rounded,
+                                  size: 16,
+                                  color: Colors.black54,
+                                ),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                tooltip: 'Current Location',
+                              ),
+                          ],
                         ),
                       ),
                     ],
@@ -861,9 +1171,12 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
     required String name,
     required String service,
     required String address,
+    required double? customerLat,
+    required double? customerLng,
     required String date,
     required String price,
     required String customerAvatarUrl,
+    required VoidCallback onAddressTap,
     required VoidCallback? onDecline,
     required VoidCallback? onAccept,
   }) {
@@ -933,11 +1246,29 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
               const Icon(Icons.location_on_rounded,
                   size: 14, color: Colors.black38),
               const SizedBox(width: 6),
-              Text(address,
-                  style: const TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 12,
-                      color: Colors.black54)),
+              Expanded(
+                child: InkWell(
+                  onTap: (customerLat != null &&
+                          customerLng != null &&
+                          address != 'Address not provided')
+                      ? onAddressTap
+                      : null,
+                  borderRadius: BorderRadius.circular(6),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: Text(
+                      address,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 12,
+                        color: Colors.black54,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 6),
@@ -946,11 +1277,18 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
               const Icon(Icons.access_time_rounded,
                   size: 14, color: Colors.black38),
               const SizedBox(width: 6),
-              Text(date,
+              Expanded(
+                child: Text(
+                  date,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 12,
-                      color: Colors.black54)),
+                    fontFamily: 'Inter',
+                    fontSize: 12,
+                    color: Colors.black54,
+                  ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -1002,6 +1340,36 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
   // â”€â”€ Schedule Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Widget _buildScheduleCard() {
+    final schedule = _todaySchedule;
+    if (schedule == null) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: const [
+            BoxShadow(
+                color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 4)),
+          ],
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.event_busy_outlined, color: Colors.black45),
+            SizedBox(width: 10),
+            Text(
+              'No schedule for today.',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Colors.black54,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1020,16 +1388,16 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
               color: Colors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Column(
+            child: Column(
               children: [
-                Text('14',
-                    style: TextStyle(
+                Text(schedule['day'] ?? '--',
+                    style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 20,
                         fontWeight: FontWeight.w800,
                         color: Colors.white)),
-                Text('APR',
-                    style: TextStyle(
+                Text(schedule['month'] ?? '---',
+                    style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -1038,24 +1406,24 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
             ),
           ),
           const SizedBox(width: 16),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('TV Repairing Service',
-                    style: TextStyle(
+                Text(schedule['serviceName'] ?? 'Service',
+                    style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                         color: Colors.white)),
-                SizedBox(height: 6),
+                const SizedBox(height: 6),
                 Row(
                   children: [
-                    Icon(Icons.access_time_rounded,
+                    const Icon(Icons.access_time_rounded,
                         size: 14, color: Colors.white70),
-                    SizedBox(width: 6),
-                    Text('11:00 AM - 12:30 PM',
-                        style: TextStyle(
+                    const SizedBox(width: 6),
+                    Text(schedule['timeSlot'] ?? '',
+                        style: const TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 12,
                             color: Colors.white70)),

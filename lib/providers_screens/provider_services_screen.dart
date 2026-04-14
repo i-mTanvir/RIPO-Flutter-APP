@@ -21,26 +21,26 @@ class _ProviderServicesScreenState extends State<ProviderServicesScreen> {
     _loadServices();
   }
 
-  // ✅ Single reload method — always sets _isLoading true/false itself.
-  //    Never call setState(_isLoading = true) + await _loadServices() separately.
   Future<void> _loadServices() async {
-    // Only set loading=true if the widget is still mounted and not already loading
-    if (mounted && !_isLoading) {
-      setState(() => _isLoading = true);
-    }
     try {
       final services = await ProviderServiceService.fetchProviderServices();
-      if (!mounted) return; // ✅ guard after every await
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _services = services;
         _isLoading = false;
       });
     } on PostgrestException catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       context.showAppSnackBar(error.message, isError: true);
       setState(() => _isLoading = false);
-    } catch (_) {
-      if (!mounted) return;
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
       context.showAppSnackBar('Could not load provider services.',
           isError: true);
       setState(() => _isLoading = false);
@@ -48,7 +48,6 @@ class _ProviderServicesScreenState extends State<ProviderServicesScreen> {
   }
 
   Future<void> _openAddService({ProviderServiceRecord? service}) async {
-    // ✅ Await the navigation — Flutter pointer system is suspended during push
     final didChange = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
@@ -66,17 +65,18 @@ class _ProviderServicesScreenState extends State<ProviderServicesScreen> {
                   'description': service.description,
                   'variations': service.variations,
                   'faqs': service.faqs,
+                  'serviceLocationId': service.serviceLocationId,
+                  'serviceLocationText': service.serviceLocationText,
+                  'serviceLatitude': service.serviceLatitude,
+                  'serviceLongitude': service.serviceLongitude,
                   'mediaUrls': service.mediaUrls,
                 },
         ),
       ),
     );
 
-    // ✅ Guard immediately after Navigator.push returns (route closed)
-    if (!mounted) return;
-
     if (didChange == true) {
-      // ✅ _loadServices sets _isLoading itself — no separate setState here
+      setState(() => _isLoading = true);
       await _loadServices();
     }
   }
@@ -87,17 +87,23 @@ class _ProviderServicesScreenState extends State<ProviderServicesScreen> {
         serviceId: service.id,
         isActive: !service.isActive,
       );
-      if (!mounted) return; // ✅ guard after await
+      if (!mounted) {
+        return;
+      }
       context.showAppSnackBar(
         service.isActive ? 'Service paused.' : 'Service activated.',
       );
-      // ✅ _loadServices sets _isLoading itself — no separate setState here
+      setState(() => _isLoading = true);
       await _loadServices();
     } on PostgrestException catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       context.showAppSnackBar(error.message, isError: true);
-    } catch (_) {
-      if (!mounted) return;
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
       context.showAppSnackBar('Could not update service status.',
           isError: true);
     }
@@ -106,16 +112,16 @@ class _ProviderServicesScreenState extends State<ProviderServicesScreen> {
   Future<void> _deleteService(ProviderServiceRecord service) async {
     final confirmed = await showDialog<bool>(
           context: context,
-          builder: (ctx) => AlertDialog(
+          builder: (context) => AlertDialog(
             title: const Text('Delete Service'),
             content: Text('Delete "${service.name}" permanently?'),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
+                onPressed: () => Navigator.pop(context, false),
                 child: const Text('Cancel'),
               ),
               TextButton(
-                onPressed: () => Navigator.pop(ctx, true),
+                onPressed: () => Navigator.pop(context, true),
                 child: const Text(
                   'Delete',
                   style: TextStyle(color: Color(0xFFD32F2F)),
@@ -126,22 +132,27 @@ class _ProviderServicesScreenState extends State<ProviderServicesScreen> {
         ) ??
         false;
 
-    // ✅ Guard immediately after showDialog returns (dialog closed)
-    if (!mounted) return;
-
-    if (!confirmed) return;
+    if (!confirmed) {
+      return;
+    }
 
     try {
       await ProviderServiceService.deleteService(service);
-      if (!mounted) return; // ✅ guard after await
+      if (!mounted) {
+        return;
+      }
       context.showAppSnackBar('Service deleted.');
-      // ✅ _loadServices sets _isLoading itself — no separate setState here
+      setState(() => _isLoading = true);
       await _loadServices();
     } on PostgrestException catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       context.showAppSnackBar(error.message, isError: true);
-    } catch (_) {
-      if (!mounted) return;
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
       context.showAppSnackBar('Could not delete service.', isError: true);
     }
   }
@@ -166,8 +177,12 @@ class _ProviderServicesScreenState extends State<ProviderServicesScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: Colors.white),
-            // ✅ _loadServices handles its own loading state
-            onPressed: _isLoading ? null : _loadServices,
+            onPressed: _isLoading
+                ? null
+                : () {
+                    setState(() => _isLoading = true);
+                    _loadServices();
+                  },
           ),
         ],
       ),
@@ -185,8 +200,9 @@ class _ProviderServicesScreenState extends State<ProviderServicesScreen> {
                       right: 16,
                     ),
                     itemCount: _services.length,
-                    itemBuilder: (_, index) =>
-                        _buildServiceCard(_services[index]),
+                    itemBuilder: (context, index) {
+                      return _buildServiceCard(_services[index]);
+                    },
                   ),
                 ),
       floatingActionButton: FloatingActionButton(
@@ -276,7 +292,7 @@ class _ProviderServicesScreenState extends State<ProviderServicesScreen> {
                       : Image.network(
                           service.coverImageUrl!,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
+                          errorBuilder: (context, error, stackTrace) =>
                               const Icon(Icons.image, color: Colors.black26),
                         ),
                 ),

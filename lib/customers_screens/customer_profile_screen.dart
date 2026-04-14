@@ -3,11 +3,24 @@ import 'package:ripo/Common_Screens/login_screen.dart';
 import 'package:ripo/customers_screens/edit_profile_screen.dart';
 import 'package:ripo/customers_screens/chat_list_screen.dart';
 import 'package:ripo/customers_screens/favorite_screen.dart';
+import 'package:ripo/customers_screens/location_picker_bottom_sheet.dart';
+import 'package:ripo/core/customer_location_service.dart';
 import 'package:ripo/providers_screens/provider_wallet_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class CustomerProfileScreen extends StatefulWidget {
-  const CustomerProfileScreen({super.key});
+  const CustomerProfileScreen({
+    super.key,
+    this.initialAddress,
+    this.initialLatitude,
+    this.initialLongitude,
+    this.onLocationUpdated,
+  });
+
+  final String? initialAddress;
+  final double? initialLatitude;
+  final double? initialLongitude;
+  final ValueChanged<PickedLocation>? onLocationUpdated;
 
   @override
   State<CustomerProfileScreen> createState() => _CustomerProfileScreenState();
@@ -17,6 +30,9 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
   String _userFullName = 'Loading...';
   String _userEmail = 'Loading...';
   String _avatarUrl = '';
+  String _serviceAreaText = 'Not set';
+  double? _serviceAreaLatitude;
+  double? _serviceAreaLongitude;
 
   final List<Map<String, dynamic>> _generalItems = [
     {'icon': Icons.person, 'label': 'My Profile'},
@@ -42,7 +58,13 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
   @override
   void initState() {
     super.initState();
+    _serviceAreaText = (widget.initialAddress?.trim().isNotEmpty ?? false)
+        ? widget.initialAddress!.trim()
+        : 'Not set';
+    _serviceAreaLatitude = widget.initialLatitude;
+    _serviceAreaLongitude = widget.initialLongitude;
     _loadProfileData();
+    _loadSavedServiceArea();
   }
 
   Future<void> _loadProfileData() async {
@@ -82,6 +104,55 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
           _avatarUrl = '';
         });
       }
+    }
+  }
+
+  Future<void> _loadSavedServiceArea() async {
+    try {
+      final saved = await CustomerLocationService.getDefaultLocation();
+      if (!mounted || saved == null) return;
+      setState(() {
+        _serviceAreaText = saved.address;
+        _serviceAreaLatitude = saved.latitude;
+        _serviceAreaLongitude = saved.longitude;
+      });
+    } catch (_) {
+      // Keep UI fallback values.
+    }
+  }
+
+  Future<void> _onTapServiceArea() async {
+    final picked = await LocationPickerBottomSheet.show(
+      context,
+      initialLatitude: _serviceAreaLatitude,
+      initialLongitude: _serviceAreaLongitude,
+      initialAddress: _serviceAreaText,
+    );
+
+    if (!mounted || picked == null) return;
+
+    try {
+      await CustomerLocationService.setDefaultLocation(
+        latitude: picked.latitude,
+        longitude: picked.longitude,
+        address: picked.address,
+      );
+      if (!mounted) return;
+
+      setState(() {
+        _serviceAreaText = picked.address;
+        _serviceAreaLatitude = picked.latitude;
+        _serviceAreaLongitude = picked.longitude;
+      });
+      widget.onLocationUpdated?.call(picked);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Service area updated.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not update service area.')),
+      );
     }
   }
 
@@ -243,6 +314,8 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                         builder: (_) => const FavoriteScreen(),
                       ),
                     );
+                  } else if (item['label'] == 'Service Area') {
+                    _onTapServiceArea();
                   }
                 },
                 child: Column(
@@ -266,6 +339,8 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                     Text(
                       item['label'] as String,
                       textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 10,

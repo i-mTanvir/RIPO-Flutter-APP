@@ -3,8 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:ripo/customers_screens/search_screen.dart';
 import 'package:ripo/customers_screens/my_booking_screen.dart';
 import 'package:ripo/customers_screens/customer_profile_screen.dart';
+import 'package:ripo/customers_screens/location_picker_bottom_sheet.dart';
 import 'package:ripo/customers_screens/customer_services_screen.dart';
 import 'package:ripo/customers_screens/notification_screen.dart';
+import 'package:ripo/customers_screens/service_details_screen.dart';
+import 'package:ripo/core/customer_location_service.dart';
+import 'package:ripo/core/location_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class CustomerDashboardScreen extends StatefulWidget {
@@ -18,6 +22,11 @@ class CustomerDashboardScreen extends StatefulWidget {
 class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
   int _currentOfferPage = 0;
   int _selectedNavIndex = 0;
+  String _currentLocationText = 'Detecting location...';
+  double? _currentLatitude;
+  double? _currentLongitude;
+  bool _isResolvingLocation = true;
+  bool _hasSavedDefaultLocation = false;
 
   late final PageController _offerPageController;
   Timer? _offerTimer;
@@ -105,7 +114,109 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
     super.initState();
     _offerPageController = PageController();
     _startOfferAutoScroll();
+    _bootstrapCustomerLocation();
     _loadRecommendedServices();
+  }
+
+  Future<void> _bootstrapCustomerLocation() async {
+    await _loadSavedDefaultLocation();
+    await _resolveCurrentLocationInternal(saveIfMissingOnly: true);
+  }
+
+  Future<void> _loadSavedDefaultLocation() async {
+    try {
+      final saved = await CustomerLocationService.getDefaultLocation();
+      if (!mounted || saved == null) return;
+
+      setState(() {
+        _currentLocationText = saved.address;
+        _currentLatitude = saved.latitude;
+        _currentLongitude = saved.longitude;
+        _hasSavedDefaultLocation = true;
+      });
+    } catch (_) {
+      // Keep runtime location fallback behavior.
+    }
+  }
+
+  Future<void> _resolveCurrentLocation() async {
+    await _resolveCurrentLocationInternal(saveIfMissingOnly: false);
+  }
+
+  Future<void> _resolveCurrentLocationInternal({
+    required bool saveIfMissingOnly,
+  }) async {
+    if (!mounted) return;
+    setState(() => _isResolvingLocation = true);
+
+    final result = await LocationService.detectCurrentLocation();
+    if (!mounted) return;
+
+    final shouldUpdateUi = !_hasSavedDefaultLocation || !saveIfMissingOnly;
+    if (shouldUpdateUi) {
+      setState(() {
+        _currentLocationText = result.locationText;
+        _currentLatitude = result.latitude;
+        _currentLongitude = result.longitude;
+      });
+    }
+
+    if (result.latitude != null &&
+        result.longitude != null &&
+        (!_hasSavedDefaultLocation || !saveIfMissingOnly)) {
+      await _persistCustomerDefaultLocation(
+        latitude: result.latitude!,
+        longitude: result.longitude!,
+        address: result.locationText,
+      );
+    }
+
+    if (mounted) {
+      setState(() => _isResolvingLocation = false);
+    }
+  }
+
+  Future<void> _openLocationPicker() async {
+    final picked = await LocationPickerBottomSheet.show(
+      context,
+      initialLatitude: _currentLatitude,
+      initialLongitude: _currentLongitude,
+      initialAddress: _currentLocationText,
+    );
+
+    if (!mounted || picked == null) return;
+    setState(() {
+      _currentLatitude = picked.latitude;
+      _currentLongitude = picked.longitude;
+      _currentLocationText = picked.address;
+    });
+
+    await _persistCustomerDefaultLocation(
+      latitude: picked.latitude,
+      longitude: picked.longitude,
+      address: picked.address,
+    );
+  }
+
+  Future<void> _persistCustomerDefaultLocation({
+    required double latitude,
+    required double longitude,
+    required String address,
+  }) async {
+    try {
+      await CustomerLocationService.setDefaultLocation(
+        latitude: latitude,
+        longitude: longitude,
+        address: address,
+      );
+      if (!mounted) return;
+      setState(() => _hasSavedDefaultLocation = true);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not save your default location.')),
+      );
+    }
   }
 
   Future<void> _loadRecommendedServices() async {
@@ -151,6 +262,7 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
             serviceId == null ? '' : (coverImageByServiceId[serviceId] ?? '');
 
         return <String, dynamic>{
+          'id': serviceId ?? '',
           'name': (row['name'] as String?) ?? 'Service',
           'discount': hasDiscount ? '$discountPct% OFF' : 'NEW',
           'price': hasDiscount ? offer.toInt() : regular.toInt(),
@@ -235,7 +347,20 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
           : _selectedNavIndex == 2
               ? MyBookingScreen()
               : _selectedNavIndex == 3
-                  ? CustomerProfileScreen()
+                  ? CustomerProfileScreen(
+                      initialAddress: _currentLocationText,
+                      initialLatitude: _currentLatitude,
+                      initialLongitude: _currentLongitude,
+                      onLocationUpdated: (picked) {
+                        if (!mounted) return;
+                        setState(() {
+                          _currentLocationText = picked.address;
+                          _currentLatitude = picked.latitude;
+                          _currentLongitude = picked.longitude;
+                          _hasSavedDefaultLocation = true;
+                        });
+                      },
+                    )
                   : _buildDashboardBody(),
       bottomNavigationBar: _buildBottomNav(),
       floatingActionButton: SizedBox(
@@ -282,52 +407,87 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 42,
-                        height: 42,
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.location_on_rounded,
-                          color: Color(0xFF6950F4),
-                          size: 22,
-                        ),
+                  InkWell(
+                    onTap: _openLocationPicker,
+                    borderRadius: BorderRadius.circular(24),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 4,
+                        horizontal: 2,
                       ),
-                      const SizedBox(width: 10),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Row(
                         children: [
-                          const Text(
-                            'Service In',
-                            style: TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.black87,
+                          Container(
+                            width: 42,
+                            height: 42,
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.location_on_rounded,
+                              color: Color(0xFF6950F4),
+                              size: 22,
                             ),
                           ),
-                          Row(
-                            children: const [
-                              Text(
-                                'Tongi, Gazipur',
+                          const SizedBox(width: 10),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Service In',
                                 style: TextStyle(
                                   fontFamily: 'Inter',
-                                  fontSize: 12,
-                                  color: Colors.black54,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.black87,
                                 ),
                               ),
-                              SizedBox(width: 2),
-                              Icon(Icons.arrow_drop_down_rounded,
-                                  size: 18, color: Colors.black54),
+                              Row(
+                                children: [
+                                  SizedBox(
+                                    width: 178,
+                                    child: Text(
+                                      _currentLocationText,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontFamily: 'Inter',
+                                        fontSize: 12,
+                                        color: Colors.black54,
+                                      ),
+                                    ),
+                                  ),
+                                  if (_isResolvingLocation)
+                                    const Padding(
+                                      padding: EdgeInsets.only(left: 6),
+                                      child: SizedBox(
+                                        width: 12,
+                                        height: 12,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 1.8,
+                                        ),
+                                      ),
+                                    )
+                                  else
+                                    IconButton(
+                                      onPressed: _resolveCurrentLocation,
+                                      icon: const Icon(
+                                        Icons.refresh_rounded,
+                                        size: 16,
+                                        color: Colors.black54,
+                                      ),
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                      tooltip: 'Current Location',
+                                    ),
+                                ],
+                              ),
                             ],
                           ),
                         ],
                       ),
-                    ],
+                    ),
                   ),
                   GestureDetector(
                     onTap: () {
@@ -563,114 +723,118 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
   }
 
   Widget _buildRecomendedServiceCard(Map<String, dynamic> s) {
-    return Container(
-      width: 160,
-      margin: const EdgeInsets.only(right: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: const [
-          BoxShadow(
-              color: Color(0x0A000000), blurRadius: 8, offset: Offset(0, 4)),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Image + discount badge
-          Stack(
+    return GestureDetector(
+        onTap: () => _pushScreen(ServiceDetailsScreen(serviceData: s)),
+        child: Container(
+          width: 160,
+          margin: const EdgeInsets.only(right: 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: const [
+              BoxShadow(
+                  color: Color(0x0A000000),
+                  blurRadius: 8,
+                  offset: Offset(0, 4)),
+            ],
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                height: 110,
-                width: 160,
-                color:
-                    const Color(0xFFF9F9F9), // Light bg for transparent images
-                child: (s['image'] as String).isNotEmpty
-                    ? Image.network(
-                        s['image'] as String,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => const Center(
-                          child: Icon(Icons.image_not_supported_outlined,
-                              color: Colors.black26),
-                        ),
-                      )
-                    : const Center(
-                        child:
-                            Icon(Icons.image_outlined, color: Colors.black26),
-                      ),
-              ),
-              Positioned(
-                top: 8,
-                left: 8,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.amber.shade700,
-                    borderRadius: BorderRadius.circular(6),
+              // Image + discount badge
+              Stack(
+                children: [
+                  Container(
+                    height: 110,
+                    width: 160,
+                    color: const Color(
+                        0xFFF9F9F9), // Light bg for transparent images
+                    child: (s['image'] as String).isNotEmpty
+                        ? Image.network(
+                            s['image'] as String,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const Center(
+                              child: Icon(Icons.image_not_supported_outlined,
+                                  color: Colors.black26),
+                            ),
+                          )
+                        : const Center(
+                            child: Icon(Icons.image_outlined,
+                                color: Colors.black26),
+                          ),
                   ),
-                  child: Text(
-                    s['discount'] as String,
-                    style: const TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade700,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        s['discount'] as String,
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
                   ),
+                ],
+              ),
+              // Details
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      s['name'] as String,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Text(
+                          '৳ ${s['price']}',
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        if (s['originalPrice'] != null)
+                          Text(
+                            '৳ ${s['originalPrice']}',
+                            style: const TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 11,
+                              color: Colors.black38,
+                              decoration: TextDecoration.lineThrough,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          // Details
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  s['name'] as String,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Text(
-                      '৳ ${s['price']}',
-                      style: const TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    if (s['originalPrice'] != null)
-                      Text(
-                        '৳ ${s['originalPrice']}',
-                        style: const TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 11,
-                          color: Colors.black38,
-                          decoration: TextDecoration.lineThrough,
-                        ),
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+        ));
   }
 
   // ── All Services Grid ─────────────────────────────────────────
