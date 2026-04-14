@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:ripo/customers_screens/service_details_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SearchScreen extends StatefulWidget {
   final String initialQuery;
@@ -14,6 +15,7 @@ class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String _sortBy = 'Recommended'; // Options: Recommended, Price (Low to High), Price (High to Low), Rating (High to Low)
+  bool _isLoadingServices = true;
 
   void _popScreen<T extends Object?>([T? result]) {
     FocusManager.instance.primaryFocus?.unfocus();
@@ -48,83 +50,80 @@ class _SearchScreenState extends State<SearchScreen> {
       _searchQuery = widget.initialQuery;
       _searchController.text = widget.initialQuery;
     }
+    _loadServices();
   }
 
-  // Rich mock data representing all services
-  final List<Map<String, dynamic>> _allServices = [
-    {
-      'name': 'Home Sanitization',
-      'discount': '40% OFF',
-      'price': 1200,
-      'originalPrice': '2,000',
-      'rating': 4.5,
-      'image': 'lib/media/clean_house_offer.png',
-      'isFavorite': false,
-    },
-    {
-      'name': 'AC Servicing',
-      'discount': '30% OFF',
-      'price': 1500,
-      'originalPrice': '2,100',
-      'rating': 4.8,
-      'image': 'lib/media/AC_servicing.png',
-      'isFavorite': true,
-    },
-    {
-      'name': 'Electronics Service',
-      'discount': '50% OFF',
-      'price': 800,
-      'originalPrice': '1,600',
-      'rating': 4.2,
-      'image': 'lib/media/electronics_servicing.png',
-      'isFavorite': false,
-    },
-    {
-      'name': 'Fan & Light Service',
-      'discount': '10% OFF',
-      'price': 300,
-      'originalPrice': '350',
-      'rating': 4.6,
-      'image': 'lib/media/fan_light_servicing.png',
-      'isFavorite': false,
-    },
-    {
-      'name': 'House Cleaning',
-      'discount': '20% OFF',
-      'price': 2000,
-      'originalPrice': '2,500',
-      'rating': 4.9,
-      'image': 'lib/media/clean_house_offer.png',
-      'isFavorite': false,
-    },
-    {
-      'name': 'Laundry Service',
-      'discount': '15% OFF',
-      'price': 500,
-      'originalPrice': '700',
-      'rating': 4.1,
-      'image': 'lib/media/loundry_washing_offer.png',
-      'isFavorite': false,
-    },
-    {
-      'name': 'TV Repair',
-      'discount': '25% OFF',
-      'price': 1800,
-      'originalPrice': '2,400',
-      'rating': 4.4,
-      'image': 'lib/media/TV_servicing.png',
-      'isFavorite': false,
-    },
-    {
-      'name': 'Painting',
-      'discount': '35% OFF',
-      'price': 3500,
-      'originalPrice': '4,500',
-      'rating': 4.7,
-      'image': 'lib/media/paint_servicing.png',
-      'isFavorite': true,
-    },
-  ];
+  List<Map<String, dynamic>> _allServices = [];
+
+  Future<void> _loadServices() async {
+    final client = Supabase.instance.client;
+    try {
+      final serviceRows = await client
+          .from('services')
+          .select('id, name, regular_price, offer_price, created_at')
+          .order('created_at', ascending: false)
+          .timeout(const Duration(seconds: 12));
+
+      final services = List<Map<String, dynamic>>.from(serviceRows);
+      final serviceIds = services.map((row) => row['id'] as String).toList();
+
+      final imageByServiceId = <String, String>{};
+      if (serviceIds.isNotEmpty) {
+        final mediaRows = await client
+            .from('service_media')
+            .select('service_id, file_url, is_cover, sort_order')
+            .inFilter('service_id', serviceIds)
+            .order('is_cover', ascending: false)
+            .order('sort_order', ascending: true)
+            .timeout(const Duration(seconds: 12));
+
+        final media = List<Map<String, dynamic>>.from(mediaRows);
+        for (final row in media) {
+          final serviceId = row['service_id'] as String?;
+          final fileUrl = row['file_url'] as String?;
+          if (serviceId == null || fileUrl == null || fileUrl.isEmpty) continue;
+          imageByServiceId.putIfAbsent(serviceId, () => fileUrl);
+        }
+      }
+
+      final mapped = services.map((s) {
+        final id = s['id'] as String;
+        final name = (s['name'] as String?) ?? 'Service';
+        final regular = (s['regular_price'] as num?)?.toDouble() ?? 0;
+        final offer = (s['offer_price'] as num?)?.toDouble();
+        final hasDiscount = offer != null && offer > 0 && offer < regular;
+        final discountPct = hasDiscount
+            ? (((regular - offer) / regular) * 100).round()
+            : null;
+
+        return <String, dynamic>{
+          'id': id,
+          'name': name,
+          'discount': hasDiscount ? '$discountPct% OFF' : 'NEW',
+          'price': hasDiscount ? offer.toInt() : regular.toInt(),
+          'originalPrice': hasDiscount ? regular.toInt() : null,
+          'rating': 0.0,
+          'image': imageByServiceId[id] ?? '',
+          'isFavorite': false,
+        };
+      }).toList();
+
+      if (!mounted) return;
+      setState(() {
+        _allServices = mapped;
+      });
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not load services.')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingServices = false);
+      }
+    }
+  }
 
   List<Map<String, dynamic>> get _filteredAndSortedServices {
     // Filter
@@ -220,6 +219,12 @@ class _SearchScreenState extends State<SearchScreen> {
       },
       contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
     );
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -334,6 +339,10 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Widget _buildSearchResults() {
+    if (_isLoadingServices) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     final results = _filteredAndSortedServices;
 
     if (results.isEmpty) {
@@ -398,10 +407,18 @@ class _SearchScreenState extends State<SearchScreen> {
               children: [
                 Container(
                   color: const Color(0xFFF5F5F5),
-                  child: Image.asset(
-                    s['image'],
-                    fit: BoxFit.cover, 
-                  ),
+                  child: (s['image'] as String).isNotEmpty
+                      ? Image.network(
+                          s['image'] as String,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const Center(
+                            child: Icon(Icons.image_not_supported_outlined,
+                                color: Colors.black26),
+                          ),
+                        )
+                      : const Center(
+                          child: Icon(Icons.image_outlined, color: Colors.black26),
+                        ),
                 ),
                 Positioned(
                   top: 10,
