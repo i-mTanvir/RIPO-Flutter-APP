@@ -20,12 +20,17 @@ class ServiceDetailsScreen extends StatefulWidget {
 class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
   int _selectedTabIndex = 0;
   bool _isLoading = false;
-
+  bool _isFavorite = false;
   Map<String, dynamic> _resolvedServiceData = <String, dynamic>{};
   Map<String, dynamic> _providerData = <String, dynamic>{};
   List<Map<String, dynamic>> _reviews = <Map<String, dynamic>>[];
 
-  final List<String> _tabs = ['Overview', 'Service Variation', 'Review', 'FAQs'];
+  final List<String> _tabs = [
+    'Overview',
+    'Service Variation',
+    'Review',
+    'FAQs'
+  ];
 
   Map<String, dynamic> get _displayData {
     if (widget.isProviderPreview) {
@@ -37,7 +42,8 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
   @override
   void initState() {
     super.initState();
-    _resolvedServiceData = Map<String, dynamic>.from(widget.serviceData ?? const {});
+    _resolvedServiceData =
+        Map<String, dynamic>.from(widget.serviceData ?? const {});
     if (!widget.isProviderPreview) {
       _loadServiceDetailsFromDb();
     }
@@ -54,9 +60,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     final client = Supabase.instance.client;
 
     try {
-      final serviceRow = await client
-          .from('services')
-          .select('''
+      final serviceRow = await client.from('services').select('''
             id,
             provider_id,
             name,
@@ -73,9 +77,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
               rating_avg,
               review_count
             )
-          ''')
-          .eq('id', serviceId)
-          .maybeSingle();
+          ''').eq('id', serviceId).maybeSingle();
 
       if (serviceRow == null) {
         if (!mounted) return;
@@ -99,7 +101,8 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
       final media = List<Map<String, dynamic>>.from(mediaRows);
       final reviews = List<Map<String, dynamic>>.from(reviewsRows);
 
-      final image = media.isEmpty ? '' : (media.first['file_url'] as String? ?? '');
+      final image =
+          media.isEmpty ? '' : (media.first['file_url'] as String? ?? '');
 
       final customerIds = reviews
           .map((row) => row['customer_id'] as String?)
@@ -130,22 +133,31 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
             .select('full_name')
             .eq('id', providerId)
             .maybeSingle();
-        providerProfileName = (providerProfileRow?['full_name'] as String?)?.trim() ?? '';
+        providerProfileName =
+            (providerProfileRow?['full_name'] as String?)?.trim() ?? '';
       }
 
-      final provider = serviceRow['provider_profiles'] as Map<String, dynamic>? ?? const {};
+      final provider =
+          serviceRow['provider_profiles'] as Map<String, dynamic>? ?? const {};
       final providerOwner = (provider['owner_name'] as String?)?.trim() ?? '';
-      final providerBusiness = (provider['business_name'] as String?)?.trim() ?? '';
+      final providerBusiness =
+          (provider['business_name'] as String?)?.trim() ?? '';
 
       final providerName = providerOwner.isNotEmpty
           ? providerOwner
-          : (providerBusiness.isNotEmpty ? providerBusiness : providerProfileName);
+          : (providerBusiness.isNotEmpty
+              ? providerBusiness
+              : providerProfileName);
 
       final regular = (serviceRow['regular_price'] as num?)?.toDouble();
       final offer = (serviceRow['offer_price'] as num?)?.toDouble();
-      final hasDiscount =
-          regular != null && offer != null && regular > 0 && offer > 0 && offer < regular;
-      final discountPct = hasDiscount ? (((regular - offer) / regular) * 100).round() : null;
+      final hasDiscount = regular != null &&
+          offer != null &&
+          regular > 0 &&
+          offer > 0 &&
+          offer < regular;
+      final discountPct =
+          hasDiscount ? (((regular - offer) / regular) * 100).round() : null;
 
       final reviewRatings = reviews
           .map((row) => (row['rating'] as num?)?.toDouble())
@@ -162,15 +174,32 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
         final createdAt = row['created_at'] as String?;
 
         return <String, dynamic>{
-          'name': customerId == null ? '' : (customerNameById[customerId] ?? ''),
+          'name':
+              customerId == null ? '' : (customerNameById[customerId] ?? ''),
           'rating': rating,
           'comment': comment,
           'createdAt': createdAt,
         };
       }).toList();
 
-      final categoryMap = serviceRow['service_categories'] as Map<String, dynamic>?;
+      final categoryMap =
+          serviceRow['service_categories'] as Map<String, dynamic>?;
       final categoryName = (categoryMap?['name'] as String?)?.trim() ?? '';
+
+      // Check if service is favorited by current user
+      bool isFavorite = false;
+      final currentUserId = client.auth.currentSession?.user.id;
+      if (currentUserId != null &&
+          currentUserId.isNotEmpty &&
+          serviceId != null) {
+        final favoriteCheck = await client
+            .from('favorites')
+            .select('id')
+            .eq('customer_id', currentUserId)
+            .eq('service_id', serviceId)
+            .maybeSingle();
+        isFavorite = favoriteCheck != null;
+      }
 
       final resolved = <String, dynamic>{
         'id': serviceRow['id'],
@@ -187,7 +216,8 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
         'rating': serviceRating,
         'reviewCount': mappedReviews.length,
         'providerName': providerName,
-        'image': image.isNotEmpty ? image : (_resolvedServiceData['image'] ?? ''),
+        'image':
+            image.isNotEmpty ? image : (_resolvedServiceData['image'] ?? ''),
       };
 
       final providerResolved = <String, dynamic>{
@@ -204,11 +234,63 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
         };
         _providerData = providerResolved;
         _reviews = mappedReviews;
+        _isFavorite = isFavorite;
         _isLoading = false;
       });
     } catch (_) {
       if (!mounted) return;
       setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _toggleFavorite() async {
+    final client = Supabase.instance.client;
+    final currentUserId = client.auth.currentSession?.user.id;
+    final serviceId = (_displayData['id'] as String?)?.trim();
+
+    if (currentUserId == null ||
+        currentUserId.isEmpty ||
+        serviceId == null ||
+        serviceId.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to add to favorites')),
+      );
+      return;
+    }
+
+    try {
+      if (_isFavorite) {
+        // Remove from favorites
+        await client
+            .from('favorites')
+            .delete()
+            .eq('customer_id', currentUserId)
+            .eq('service_id', serviceId);
+      } else {
+        // Add to favorites
+        await client.from('favorites').insert({
+          'customer_id': currentUserId,
+          'service_id': serviceId,
+        });
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _isFavorite = !_isFavorite;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              _isFavorite ? 'Added to favorites' : 'Removed from favorites'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
     }
   }
 
@@ -269,8 +351,14 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
               shape: BoxShape.circle,
             ),
             child: IconButton(
-              icon: const Icon(Icons.favorite_border_rounded, color: Color(0xFF6950F4), size: 20),
-              onPressed: () {},
+              icon: Icon(
+                _isFavorite
+                    ? Icons.favorite_rounded
+                    : Icons.favorite_border_rounded,
+                color: const Color(0xFF6950F4),
+                size: 20,
+              ),
+              onPressed: _toggleFavorite,
             ),
           ),
           Container(
@@ -281,7 +369,8 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
               shape: BoxShape.circle,
             ),
             child: IconButton(
-              icon: const Icon(Icons.reply_rounded, color: Color(0xFFFF9800), size: 20),
+              icon: const Icon(Icons.reply_rounded,
+                  color: Color(0xFFFF9800), size: 20),
               onPressed: () {},
             ),
           ),
@@ -319,20 +408,23 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
       ),
       clipBehavior: Clip.antiAlias,
       child: !hasImage
-          ? const Center(child: Icon(Icons.image_outlined, color: Colors.black26))
+          ? const Center(
+              child: Icon(Icons.image_outlined, color: Colors.black26))
           : isNetwork
               ? Image.network(
                   normalized,
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => const Center(
-                    child: Icon(Icons.image_not_supported_outlined, color: Colors.black26),
+                    child: Icon(Icons.image_not_supported_outlined,
+                        color: Colors.black26),
                   ),
                 )
               : Image.asset(
                   normalized,
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => const Center(
-                    child: Icon(Icons.image_not_supported_outlined, color: Colors.black26),
+                    child: Icon(Icons.image_not_supported_outlined,
+                        color: Colors.black26),
                   ),
                 ),
     );
@@ -347,7 +439,8 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     final duration = (_displayData['durationText'] as String?)?.trim() ?? '';
 
     final ratingValue = (_displayData['rating'] as num?)?.toDouble();
-    final ratingText = ratingValue == null ? '' : ratingValue.toStringAsFixed(1);
+    final ratingText =
+        ratingValue == null ? '' : ratingValue.toStringAsFixed(1);
     final reviewCount = (_displayData['reviewCount'] as num?)?.toInt();
     final reviewText = reviewCount == null ? '' : '($reviewCount Reviews)';
 
@@ -406,7 +499,8 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
               ),
               if (discount.isNotEmpty)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFFF1F1),
                     borderRadius: BorderRadius.circular(20),
@@ -511,7 +605,8 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     final description = (_displayData['description'] as String?)?.trim() ?? '';
     final providerName = (_providerData['name'] as String?)?.trim() ?? '';
     final providerRating = (_providerData['rating'] as num?)?.toDouble();
-    final providerRatingText = providerRating == null ? '' : providerRating.toStringAsFixed(1);
+    final providerRatingText =
+        providerRating == null ? '' : providerRating.toStringAsFixed(1);
     final providerReviewCount = (_providerData['reviewCount'] as num?)?.toInt();
     final providerReviewText =
         providerReviewCount == null ? '' : '($providerReviewCount Reviews)';
@@ -574,7 +669,8 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                     color: Color(0xFFE8F4FD),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.person_rounded, color: Color(0xFF6950F4)),
+                  child: const Icon(Icons.person_rounded,
+                      color: Color(0xFF6950F4)),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -593,7 +689,8 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          const Icon(Icons.star_rounded, color: Colors.amber, size: 16),
+                          const Icon(Icons.star_rounded,
+                              color: Colors.amber, size: 16),
                           const SizedBox(width: 4),
                           Text(
                             providerRatingText,
@@ -620,9 +717,11 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF6950F4)),
+                  icon: const Icon(Icons.chat_bubble_outline_rounded,
+                      color: Color(0xFF6950F4)),
                   onPressed: () {
-                    final providerName = ((_providerData['name'] as String?)?.trim() ??
+                    final providerName = ((_providerData['name'] as String?)
+                                ?.trim() ??
                             (_displayData['providerName'] as String?)?.trim() ??
                             '')
                         .trim();
@@ -632,7 +731,8 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => ChatDetailScreen(providerName: providerName),
+                        builder: (_) =>
+                            ChatDetailScreen(providerName: providerName),
                       ),
                     );
                   },
@@ -762,7 +862,8 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                 backgroundColor: const Color(0xFFEDE9FF),
                 child: Text(
                   initial,
-                  style: const TextStyle(color: Color(0xFF6950F4), fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                      color: Color(0xFF6950F4), fontWeight: FontWeight.bold),
                 ),
               ),
               const SizedBox(width: 10),
@@ -840,12 +941,15 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => BookingScheduleScreen(serviceData: _displayData),
+                      builder: (_) =>
+                          BookingScheduleScreen(serviceData: _displayData),
                     ),
                   );
                 },
           style: ElevatedButton.styleFrom(
-            backgroundColor: widget.isProviderPreview ? Colors.white : const Color(0xFF6950F4),
+            backgroundColor: widget.isProviderPreview
+                ? Colors.white
+                : const Color(0xFF6950F4),
             minimumSize: const Size(double.infinity, 54),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(28),
@@ -856,12 +960,16 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
             elevation: 0,
           ),
           child: Text(
-            widget.isProviderPreview ? 'Close Preview' : 'Book / Schedule Service',
+            widget.isProviderPreview
+                ? 'Close Preview'
+                : 'Book / Schedule Service',
             style: TextStyle(
               fontFamily: 'Inter',
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: widget.isProviderPreview ? const Color(0xFF6950F4) : Colors.white,
+              color: widget.isProviderPreview
+                  ? const Color(0xFF6950F4)
+                  : Colors.white,
             ),
           ),
         ),
