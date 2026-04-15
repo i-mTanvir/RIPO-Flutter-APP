@@ -1,3 +1,4 @@
+// lib\providers_screens\create_offer_screen.dart
 import 'package:flutter/material.dart';
 
 class CreateOfferScreen extends StatefulWidget {

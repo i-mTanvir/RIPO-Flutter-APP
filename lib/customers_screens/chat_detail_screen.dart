@@ -1,3 +1,4 @@
+// lib\customers_screens\chat_detail_screen.dart
 import 'package:flutter/material.dart';
 import 'package:ripo/core/chat_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';

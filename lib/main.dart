@@ -1,3 +1,4 @@
+// lib\main.dart
 import 'package:flutter/material.dart';
 import 'package:ripo/core/supabase_config.dart';
 import 'package:ripo/Common_Screens/splash_screen.dart';

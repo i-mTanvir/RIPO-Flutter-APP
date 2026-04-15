@@ -1,3 +1,4 @@
+// lib\admin_screens\admin_offers_screen.dart
 import 'package:flutter/material.dart';
 
 class AdminOffersScreen extends StatefulWidget {

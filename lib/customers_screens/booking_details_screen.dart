@@ -1,4 +1,5 @@
-﻿import 'dart:math';
+﻿// lib\customers_screens\booking_details_screen.dart
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';

@@ -1,3 +1,4 @@
+// lib\core\app_snackbar.dart
 import 'package:flutter/material.dart';
 
 extension AppSnackbar on BuildContext {

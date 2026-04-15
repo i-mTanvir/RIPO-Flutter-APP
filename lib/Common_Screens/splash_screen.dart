@@ -1,3 +1,4 @@
+// lib\Common_Screens\splash_screen.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:ripo/Common_Screens/welcome_screen.dart';

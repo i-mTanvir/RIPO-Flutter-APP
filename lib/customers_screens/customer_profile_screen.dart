@@ -1,3 +1,4 @@
+// lib\customers_screens\customer_profile_screen.dart
 import 'package:flutter/material.dart';
 import 'package:ripo/Common_Screens/login_screen.dart';
 import 'package:ripo/customers_screens/edit_profile_screen.dart';

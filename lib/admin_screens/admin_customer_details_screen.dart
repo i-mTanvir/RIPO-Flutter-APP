@@ -1,3 +1,4 @@
+// lib\admin_screens\admin_customer_details_screen.dart
 import 'package:flutter/material.dart';
 import 'package:ripo/core/admin_service.dart';
 

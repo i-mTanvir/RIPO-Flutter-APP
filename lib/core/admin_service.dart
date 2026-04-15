@@ -1,3 +1,4 @@
+// lib\core\admin_service.dart
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AdminCustomerListItem {
