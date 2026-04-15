@@ -3,6 +3,7 @@ import 'package:ripo/admin_screens/admin_users_screen.dart';
 import 'package:ripo/admin_screens/admin_offers_screen.dart';
 import 'package:ripo/admin_screens/settings_screen.dart';
 import 'package:ripo/admin_screens/admin_finance_screen.dart';
+import 'package:ripo/customers_screens/chat_list_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -357,14 +358,35 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   ),
                 ],
               ),
-              IconButton(
-                icon: const Icon(Icons.notifications_rounded,
-                    color: Colors.black87, size: 20),
-                onPressed: () {},
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.white.withValues(alpha: 0.3),
-                  padding: const EdgeInsets.all(8),
-                ),
+              Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.chat_bubble_outline_rounded,
+                        color: Colors.black87, size: 20),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const ChatListScreen(),
+                        ),
+                      );
+                    },
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.white.withValues(alpha: 0.3),
+                      padding: const EdgeInsets.all(8),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  IconButton(
+                    icon: const Icon(Icons.notifications_rounded,
+                        color: Colors.black87, size: 20),
+                    onPressed: () {},
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.white.withValues(alpha: 0.3),
+                      padding: const EdgeInsets.all(8),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
