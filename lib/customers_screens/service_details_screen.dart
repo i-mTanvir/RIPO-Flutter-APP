@@ -866,14 +866,19 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                             (_displayData['providerName'] as String?)?.trim() ??
                             '')
                         .trim();
-                    if (providerName.isEmpty) {
+                    final providerId =
+                        ((_displayData['providerId'] as String?) ?? '').trim();
+                    if (providerName.isEmpty || providerId.isEmpty) {
                       return;
                     }
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) =>
-                            ChatDetailScreen(providerName: providerName),
+                        builder: (_) => ChatDetailScreen(
+                          peerName: providerName,
+                          peerUserId: providerId,
+                          peerRole: 'provider',
+                        ),
                       ),
                     );
                   },

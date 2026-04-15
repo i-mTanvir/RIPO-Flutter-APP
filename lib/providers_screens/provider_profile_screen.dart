@@ -260,7 +260,7 @@ class ProviderProfileScreen extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => ChatListScreen(),
+                        builder: (_) => const ChatListScreen(),
                       ),
                     );
                   }

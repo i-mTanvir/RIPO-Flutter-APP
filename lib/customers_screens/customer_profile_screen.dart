@@ -297,7 +297,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => ChatListScreen(),
+                        builder: (_) => const ChatListScreen(),
                       ),
                     );
                   } else if (item['label'] == 'My Wallet') {
