@@ -435,3 +435,96 @@ values
   ('Home Sanitization', 'home-sanitization', 'Cleaning & Pest Control', 'sanitizer_rounded', 24),
   ('Laundry Service', 'laundry-service', 'Cleaning & Pest Control', 'local_laundry_service_rounded', 25)
 on conflict (slug) do nothing;
+
+-- ============================================================
+-- CHAT
+-- ============================================================
+
+create table if not exists public.conversations (
+  id              uuid primary key default gen_random_uuid(),
+  customer_id     uuid not null references public.profiles(id) on delete cascade,
+  provider_id     uuid not null references public.profiles(id) on delete cascade,
+  last_message    text,
+  last_message_at timestamptz,
+  created_at      timestamptz not null default now(),
+  constraint conversations_unique_pair unique (customer_id, provider_id)
+);
+
+create table if not exists public.messages (
+  id              uuid primary key default gen_random_uuid(),
+  conversation_id uuid not null references public.conversations(id) on delete cascade,
+  sender_id       uuid not null references public.profiles(id) on delete cascade,
+  content         text not null,
+  is_read         boolean not null default false,
+  created_at      timestamptz not null default now()
+);
+
+create index if not exists messages_conversation_id_idx on public.messages(conversation_id);
+create index if not exists messages_sender_id_idx        on public.messages(sender_id);
+create index if not exists messages_created_at_idx       on public.messages(created_at);
+create index if not exists conversations_customer_id_idx on public.conversations(customer_id);
+create index if not exists conversations_provider_id_idx on public.conversations(provider_id);
+
+create or replace function public.update_conversation_last_message()
+returns trigger language plpgsql security definer set search_path = public
+as $$
+begin
+  update public.conversations
+  set last_message = new.content, last_message_at = new.created_at
+  where id = new.conversation_id;
+  return new;
+end;
+$$;
+
+create trigger trg_update_conversation_last_message
+after insert on public.messages
+for each row execute function public.update_conversation_last_message();
+
+alter table public.conversations enable row level security;
+alter table public.messages      enable row level security;
+
+create policy "Users can view own conversations"
+  on public.conversations for select
+  using (auth.uid() = customer_id or auth.uid() = provider_id);
+
+create policy "Users can create conversations"
+  on public.conversations for insert
+  with check (auth.uid() = customer_id or auth.uid() = provider_id);
+
+create policy "System can update conversations"
+  on public.conversations for update
+  using (auth.uid() = customer_id or auth.uid() = provider_id);
+
+create policy "Users can view messages in their conversations"
+  on public.messages for select
+  using (
+    exists (
+      select 1 from public.conversations c
+      where c.id = messages.conversation_id
+        and (c.customer_id = auth.uid() or c.provider_id = auth.uid())
+    )
+  );
+
+create policy "Users can send messages in their conversations"
+  on public.messages for insert
+  with check (
+    sender_id = auth.uid()
+    and exists (
+      select 1 from public.conversations c
+      where c.id = conversation_id
+        and (c.customer_id = auth.uid() or c.provider_id = auth.uid())
+    )
+  );
+
+create policy "Users can mark messages as read"
+  on public.messages for update
+  using (
+    exists (
+      select 1 from public.conversations c
+      where c.id = messages.conversation_id
+        and (c.customer_id = auth.uid() or c.provider_id = auth.uid())
+    )
+  );
+
+alter publication supabase_realtime add table public.messages;
+alter publication supabase_realtime add table public.conversations;
