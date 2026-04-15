@@ -436,6 +436,34 @@ class AdminService {
     }).eq('user_id', userId);
   }
 
+  static Future<void> banCustomerAccount({
+    required String userId,
+  }) {
+    return _client
+        .from('profiles')
+        .update({'is_active': false})
+        .eq('id', userId)
+        .eq('role', 'customer');
+  }
+
+  static Future<void> suspendProviderAccount({
+    required String userId,
+  }) async {
+    await _client.from('provider_profiles').update({
+      'verification_status': 'suspended',
+    }).eq('user_id', userId);
+
+    await _client
+        .from('profiles')
+        .update({'is_active': false})
+        .eq('id', userId)
+        .eq('role', 'provider');
+
+    await _client
+        .from('services')
+        .update({'is_active': false}).eq('provider_id', userId);
+  }
+
   static String? _nullableString(dynamic value) {
     final stringValue = value as String?;
     if (stringValue == null) {

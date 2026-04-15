@@ -20,6 +20,7 @@ class AdminCustomerDetailsScreen extends StatefulWidget {
 class _AdminCustomerDetailsScreenState
     extends State<AdminCustomerDetailsScreen> {
   late Future<AdminCustomerDetailsData> _detailsFuture;
+  bool _isBanningCustomer = false;
 
   @override
   void initState() {
@@ -33,6 +34,56 @@ class _AdminCustomerDetailsScreenState
       _detailsFuture = nextFuture;
     });
     await nextFuture;
+  }
+
+  Future<void> _banCustomerAccount() async {
+    final shouldProceed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Ban Customer Account'),
+          content: const Text(
+            'This will deactivate the customer account immediately. Continue?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFD32F2F),
+              ),
+              child: const Text('Ban'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldProceed != true || !mounted) {
+      return;
+    }
+
+    setState(() => _isBanningCustomer = true);
+    try {
+      await AdminService.banCustomerAccount(userId: widget.customerId);
+      if (!mounted) {
+        return;
+      }
+      _showSnack('Customer account has been banned.');
+      await _reload();
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      _showSnack('Failed to ban customer account.');
+    } finally {
+      if (mounted) {
+        setState(() => _isBanningCustomer = false);
+      }
+    }
   }
 
   @override
@@ -499,7 +550,7 @@ class _AdminCustomerDetailsScreenState
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () {},
+              onPressed: _isBanningCustomer ? null : _banCustomerAccount,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFD32F2F),
                 elevation: 0,
@@ -507,12 +558,21 @@ class _AdminCustomerDetailsScreenState
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
               ),
-              child: const Text('Ban Customer Account',
-                  style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white)),
+              child: _isBanningCustomer
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text('Ban Customer Account',
+                      style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white)),
             ),
           )
         ],

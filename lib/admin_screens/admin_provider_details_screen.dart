@@ -22,6 +22,7 @@ class _AdminProviderDetailsScreenState
   late Future<AdminProviderDetailsData> _detailsFuture;
   bool? _isVerified;
   bool _isUpdatingVerification = false;
+  bool _isSuspendingProvider = false;
 
   @override
   void initState() {
@@ -73,6 +74,59 @@ class _AdminProviderDetailsScreenState
         setState(() {
           _isUpdatingVerification = false;
         });
+      }
+    }
+  }
+
+  Future<void> _suspendProviderAccount() async {
+    final shouldProceed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Suspend Provider License'),
+          content: const Text(
+            'This will mark the provider as suspended, deactivate their account, and disable all active services. Continue?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFD32F2F),
+              ),
+              child: const Text('Suspend'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldProceed != true || !mounted) {
+      return;
+    }
+
+    setState(() => _isSuspendingProvider = true);
+    try {
+      await AdminService.suspendProviderAccount(userId: widget.providerId);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isVerified = false;
+      });
+      _showSnack('Provider has been suspended.');
+      await _reload();
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      _showSnack('Failed to suspend provider.');
+    } finally {
+      if (mounted) {
+        setState(() => _isSuspendingProvider = false);
       }
     }
   }
@@ -541,7 +595,7 @@ class _AdminProviderDetailsScreenState
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () {},
+              onPressed: _isSuspendingProvider ? null : _suspendProviderAccount,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFD32F2F),
                 elevation: 0,
@@ -549,12 +603,21 @@ class _AdminProviderDetailsScreenState
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
               ),
-              child: const Text('Suspend Provider License',
-                  style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white)),
+              child: _isSuspendingProvider
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text('Suspend Provider License',
+                      style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white)),
             ),
           )
         ],
